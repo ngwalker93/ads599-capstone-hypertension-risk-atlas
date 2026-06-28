@@ -3,20 +3,17 @@
 # ==============================================================================
 
 # 1. Project Data Directories 
-# This keeps raw and processed data in local envirnments, not on GitHub
-data/
-*.csv
+# Ignore ONLY large CSV files (if they are too big for GitHub)
+data/**/*.csv
+
+# But specifically allow the master dataset
+!data/processed/master_dataset.csv
+
+# Exclude bulky raw binary data files
 *.xlsx
-*.rds
-*.RData
-*.db
+*.xls
 
-# 2. Keep folder structure
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/final/.gitkeep
-
-# 3. R Environment and Temporary History
+# 2. R Environment and Temporary History
 # Excludes local workspace files and command history logs
 .Rhistory
 .RData
@@ -24,7 +21,7 @@ data/
 .Renviron
 .Rproj.user/
 
-# 4. Formatted Document Output Cache
+# 3. Formatted Document Output Cache
 # Prevents locally knitted PDF/HTML/Word drafts from cluttering commits
 *.html
 *.pdf
@@ -32,7 +29,7 @@ data/
 .ipynb_checkpoints/
 *.tex
 
-# 5. Hidden System Files
+# 4. Hidden System Files
 # Prevents your Mac's folder customization files from being uploaded
 __pycache__/
 .DS_Store
@@ -41,6 +38,6 @@ Thumbs.db
 .env/
 .pytest_cache/
 
-# 6. Quarto / RStudio Build Artifacts
+# 5. Quarto / RStudio Build Artifacts
 .quarto/
 *_cache/
