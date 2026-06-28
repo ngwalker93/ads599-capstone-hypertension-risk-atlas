@@ -1,0 +1,46 @@
+# ==============================================================================
+# Capstone Project .gitignore - Nancy & Michelle
+# ==============================================================================
+
+# 1. Project Data Directories 
+# This keeps raw and processed data in local envirnments, not on GitHub
+data/
+*.csv
+*.xlsx
+*.rds
+*.RData
+*.db
+
+# 2. Keep folder structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/final/.gitkeep
+
+# 3. R Environment and Temporary History
+# Excludes local workspace files and command history logs
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+.Rproj.user/
+
+# 4. Formatted Document Output Cache
+# Prevents locally knitted PDF/HTML/Word drafts from cluttering commits
+*.html
+*.pdf
+*.docx
+.ipynb_checkpoints/
+*.tex
+
+# 5. Hidden System Files
+# Prevents your Mac's folder customization files from being uploaded
+__pycache__/
+.DS_Store
+Thumbs.db
+.venv/
+.env/
+.pytest_cache/
+
+# 6. Quarto / RStudio Build Artifacts
+.quarto/
+*_cache/
