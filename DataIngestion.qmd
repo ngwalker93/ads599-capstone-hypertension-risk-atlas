@@ -1,0 +1,381 @@
+---
+title: "Hypertension Risk Atlas: Data Ingestion"
+author: "Nancy Walker"
+format: 
+  pdf:
+    keep-tex: true
+    include-in-header:
+      text: |
+        \usepackage{float}      % enables [H]
+        \usepackage{placeins}   % provides \FloatBarrier
+        \floatplacement{figure}{H}
+        \floatplacement{table}{H}
+bibliography: references.bib
+csl: https://raw.githubusercontent.com/citation-style-language/styles/master/apa.csl
+execute:
+  echo: true
+  results: asis                    # show results inline
+  warning: false
+  message: false
+
+---
+
+# R Data Ingestion 
+
+Build automated R scripts to programmatically fetch and ingest four core datasets: the **USDA Food Access Research Atlas**, the **CDC PLACES** county-level health indicators, the **County Health Rankings & Roadmaps (CHR&R)** metrics, and the **U.S. Census Bureau ACS** socioeconomic data.
+
+## 1. SETUP & LIBRARIES
+
+A few specialized libraries will be needed to fetch the data from the various sources. 
+
+```{r}
+# Install any missing standard CRAN packages if needed
+list.of.packages <- c("readxl", "tidyverse", "tidycensus", "kableExtra", "stringr", "dplyr", "tidyr")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+
+if(length(new.packages)) {
+  install.packages(new.packages, repos = "https://cloud.r-project.org")
+}
+
+# Handle archived RSocrata via GitHub (Only runs if missing)
+if (!requireNamespace("RSocrata", quietly = TRUE)) {
+  if (!requireNamespace("remotes", quietly = TRUE)) {
+    install.packages("remotes", repos = "https://cloud.r-project.org")
+  }
+  remotes::install_github("Chicago/RSocrata", upgrade = "never") 
+}
+```
+
+```{r}
+library(RSocrata)   # For CDC PLACES
+library(readxl)     # For reading/verifying USDA Excel files
+library(tidyverse)  # For data writing utilities (readr)
+library(tidycensus) # For Censue Bureau data 
+library(knitr)
+library(kableExtra)
+library(stringr)
+library(dplyr)
+library(tidyr)
+```
+
+## 2. DIRECTORY MANAGEMENT
+
+```{r}
+# Define Data Folder Stucture
+data_folders <- c("data/raw", "data/processed", "data/final")
+
+# Loop through and create only if they don't exist
+for (folder in data_folders) {
+  if (!dir.exists(folder)) {
+    dir.create(folder, recursive = TRUE)
+    message(paste0("📁 Created folder: ", folder))
+  } else {
+    message(paste0("📂 Folder already exists: ", folder))
+  }
+}
+
+```
+
+## 3. DATA DOWNLOAD / INGESTION
+
+### CDC PLACES Data 
+
+Ingest county-level chronic disease estimates from the CDC PLACES dataset [@cdc_places_2025].
+
+```{r}
+# CDC PLACES County-level Data API Endpoint (Socrata Open Data API)
+# This points directly to the latest release stream
+cdc_endpoint <- "https://data.cdc.gov/resource/cwsq-ngmh.csv"
+local_cdc_csv <- "data/raw/cdc_places_raw.csv"
+```
+
+```{r}
+# Defensive Check: Skip API network call if the raw file is already cached locally
+if (file.exists(local_cdc_csv)) {
+  message(" Local CDC PLACES cache found! Loading data directly from disk...")
+  cdc_places_raw <- readr::read_csv(local_cdc_csv, show_col_types = FALSE)
+  
+} else {
+  message("Connecting to CDC PLACES API... Fetching full dataset (this may take 1-3 minutes)...")
+  cdc_places_raw <- read.socrata(cdc_endpoint)
+  
+  # Persist Raw Stream: Immediately write the unmodified data to local storage
+  readr::write_csv(cdc_places_raw, local_cdc_csv)
+  message("Full CDC PLACES dataset successfully saved to data/raw/cdc_places_raw.csv")
+}
+```
+
+```{r}
+# Extract a small subset to verify data parity in the report preview
+cdc_test <- cdc_places_raw %>%
+  head(5) %>%
+  dplyr::select(1:5)
+
+# Render a clean preview table for the PDF report
+knitr::kable(cdc_test, caption = "CDC PLACES Sample Data Stream (First 5 Columns)")
+```
+
+### SUSDA Food Access Research Atlas
+
+The USDA server restricts automated programmatic downloads of census-tract-level food accessibility metrics from the USDA Economic Research Service. This dataset must be placed in the raw data directory manually [@usda_atlas_2019].
+
+```{r}
+# Define the exact path where the file must live
+local_xlsx <- "data/raw/FoodAccessResearchAtlasData2019.xlsx"
+
+# Defensive Check: If the file is missing, halt and print clean instructions
+if (!file.exists(local_xlsx)) {
+  stop(paste0(
+    "\n❌ MISSING REQUIRED DATASET!\n",
+    "Please follow these steps to add the USDA Food Atlas data:\n",
+    "1. Go to: https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data#:~:text=Food%20Access%20Research%20Atlas%20Data%20Download%202019 \n",
+    "2. Click 'Download Food Access Research Atlas Data Download 2019 (XLSX, 81.83 MB)' under the Current Version header.\n",
+    "3. Move the downloaded file into this project folder under: data/raw/\n",
+    "4. Rename it exactly to: FoodAccessResearchAtlasData2019.xlsx\n\n"
+  ))
+}
+
+# If the file exists, safely read it into the active R session
+message("✅ USDA dataset found! Ingesting data...")
+usda_raw <- readxl::read_excel(local_xlsx, sheet = "Food Access Research Atlas")
+
+# Extract a small subset to verify data parity
+usda_test <- usda_raw %>%
+  head(5) %>%
+  dplyr::select(State, County, CensusTract, LowIncomeTracts, LAPOP1_10)
+
+# Render a clean preview table
+knitr::kable(usda_test, caption = "USDA Food Access Research Atlas Sample Data")
+```
+
+### County Health Rankings & Roadmaps (CHR&R)
+
+The CHR&R repository provides comprehensive county-level health determinants. This dataset must be placed in the raw data directory manually [@chrr_2025].
+
+```{r}
+# Define the exact path where the file must live
+chrr_csv <- "data/raw/analytic_data2025.csv"
+
+# Defensive Check: If the file is missing, halt and print instructions
+if (!file.exists(chrr_csv)) {
+  stop(paste0(
+    "\n\n❌ MISSING REQUIRED DATASET!\n",
+    "Please follow these steps to add the CHR&R data:\n",
+    "1. Go to: https://www.countyhealthrankings.org/health-data/methodology-and-sources/data-documentation \n",
+    "2. Under the '2025 Annual Data Release' section, download the '2025 CHR CSV Analytic Data'.\n",
+    "3. Move the file into this project folder under: data/raw/\n",
+    "4. Rename it exactly to: analytic_data2025.csv\n\n"
+  ))
+}
+
+# If the file exists, safely read it into the active R session
+message("✅ CHR&R dataset found! Ingesting data...")
+chrr_raw <- readr::read_csv(chrr_csv, skip = 1, show_col_types = FALSE)
+
+# Extract a small subset to verify data parity
+chrr_test <- chrr_raw %>%
+  head(5) %>%
+  dplyr::select(state, county, v001_rawvalue)
+
+# Render a clean preview table
+knitr::kable(chrr_test, caption = "CHR&R Health Policy Registry Sample Data")
+```
+
+### Census data
+
+To ingest census data you will need an API key from the Census Bureau [@census_acs]
+Get one here: https://api.census.gov/data/key_signup.html
+
+In your R console, run the following command to set your key (replace "YOUR_KEY_HERE" with your actual key):
+# Replace 'YOUR_KEY_HERE' with the key they emailed you
+census_api_key("YOUR_KEY_HERE", install = TRUE, overwrite = TRUE)
+
+
+```{r}
+### Ingest U.S. Census Bureau (ACS 5-Year Estimates)
+
+# Define variables we want (e.g., Median Income and Poverty Rate)
+census_vars <- c(
+  med_income = "B19013_001",
+  poverty_rate = "B17001_002"
+)
+
+# Fetch data at the County level
+message("Fetching Census ACS data...")
+census_raw <- get_acs(
+  geography = "county",
+  variables = census_vars,
+  year = 2023,
+  survey = "acs5"
+)
+
+# Clean and pivot to a "wide" format (One row per FIPS)
+census_clean <- census_raw %>%
+  select(GEOID, variable, estimate) %>%
+  pivot_wider(names_from = variable, values_from = estimate) %>%
+  rename(fips = GEOID, 
+         median_income = med_income, 
+         poverty_count = poverty_rate)
+
+```
+
+```{r}
+# Render a clean preview table of the Census data
+census_clean %>%
+  head(10) %>% # Shows only the first 10 rows
+  kable(caption = "Census ACS 5-Year Estimates (Sample Data)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+# Save the raw, unclearned API response into local storage for reproducibility
+write_csv(census_clean, "data/raw/census_acs_county_2023.csv")
+message("✅ Census ACS data saved to data/raw/census_acs_county_2023.csv")
+```
+
+## 5.DATA CLEANING & STANDARDIZATION
+
+Ensure your 5-digit FIPS codes are treated as strings (characters), not numbers! 
+(Hint: Numerical rendering drops leading zeros, turning "01001" into 1001, which will break your spatial match). 
+Look into stringr::str_pad() if needed.
+
+```{r}
+# Create a summary of dataset dimensions
+data_summary <- tibble::tibble(
+  Dataset = c("CDC PLACES", "Census ACS", "CHR&R", "USDA Food Access"),
+  Rows = c(nrow(cdc_places_raw), nrow(census_raw), nrow(chrr_raw), nrow(usda_raw)),
+  Columns = c(ncol(cdc_places_raw), ncol(census_raw), ncol(chrr_raw), ncol(usda_raw)) 
+)
+
+# Render as a beautiful table for your report
+knitr::kable(data_summary, caption = "Data Pipeline: Dataset Dimensions")
+```
+
+CDC PLACES is the largest file wutg over 3 million rows. It is likely broken into specific health indicators or subpopulations. For a county level model, this dartaset may need to be filtered to a specific heath indicator (e.g., hypertension) or a specific subpopulation (e.g., adults aged 18+). 
+
+CHAR&R is 3,204 rows, which is perfect for our purposes since there are 3,142 counties in the U.S. (and some extra rows for territories). Country-level granularity is effectively captured. 
+
+USDA Food Access is at census tract level, which is more granular than county. We will need to aggregate this data up to the county level before merging.
+
+Census ACS had 6,444 rows. This is interesting becuse it is double the number of counties in the U.S. (3,142). This is because the ACS data is broken into two rows per county, or there is two years of data. We will need to filter this data to the most recent year and aggregate it to county level before merging.
+
+```{r}
+# Diagnostic: Verify FIPS columns before merging 
+check_fips <- function(df, col_name) {
+  # Check if FIPS column exists and is character type
+  if (col_name %in% names(df)) {
+    is_char <- is.character(df[[col_name]])
+    has_5_digits <- all(nchar(as.character(df[[col_name]])) == 5)
+    
+    message(paste0("🔍 Checking ", col_name, ": Is Character? ", is_char, " | All 5 Digits? ", has_5_digits))
+  } else {
+    message(paste0("❌ Column '", col_name, "' not found!"))
+  }
+}
+
+# Run this for each dataset
+check_fips(cdc_places_raw, "StateCountyFIPS") # Update name to match your specific column
+check_fips(usda_raw, "FIPS")
+check_fips(chrr_raw, "fipscode")
+check_fips(census_raw, "GEOID")
+```
+
+census_raw and chrr_raw are confirmed to be perfectly formatted.
+
+Correct names for cdc_places_raw and usda_raw may need to be updated based on the actual column names in those datasets.
+
+```{r}
+# Reveal the hidden column names for CDC PLACES and USDA datasets
+colnames(cdc_places_raw)
+colnames(usda_raw)
+```
+
+```{r}
+# Update names in the check_fips function calls based on the actual column names revealed above.
+
+# CDC check
+check_fips(cdc_places_raw, "countyfips") 
+
+# USDA check (Note: This will likely fail or show length 11, which confirms it's a Tract)
+check_fips(usda_raw, "CensusTract")
+```
+
+countyfips (CDC): Is currently numeric (Is Character? FALSE), which is why it lost its leading zeros (explaining why "All 5 Digits" is FALSE).
+
+CensusTract (USDA): Is character, but its length is longer than 5 (which is expected for tracts).
+
+Need to normalize them to a consistent 5-character string format for a perfect merge.
+
+```{r}
+# Standardize CDC PLACES
+cdc_clean <- cdc_places_raw %>%
+  mutate(GEOID = str_pad(as.character(countyfips), 5, side = "left", pad = "0"))
+
+# Standardized USDA (Aggregated to county level)
+usda_clean <- usda_raw %>%
+  mutate(GEOID = str_sub(as.character(CensusTract), 1, 5)) %>%
+  group_by(GEOID) %>%
+  summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE)), .groups = "drop")
+
+# Standardize CHR&R
+chrr_clean <- chrr_raw %>%
+  mutate(GEOID = str_pad(as.character(fipscode), 5, side = "left", pad = "0"))
+
+# Standardize Census ACS (Already using GEOID)
+census_clean <- census_raw %>%
+  mutate(GEOID = str_pad(as.character(GEOID), 5, side = "left", pad = "0"))
+```
+
+```{r}
+# One final diagnostic to prove it works 
+# This verifies all 4 are ready to merge
+check_fips(cdc_clean, "GEOID")
+check_fips(usda_clean, "GEOID")
+check_fips(chrr_clean, "GEOID")
+check_fips(census_clean, "GEOID")
+```
+
+All four datasets share the same GEOID key and can be combined into one master_df.
+
+## 6. MERGING & EXPORT
+### Join tables by FIPS key and write the clean output to a "data/processed/" directory.
+
+```{r}
+# Prepare Census: Pivot wide so each county is one row
+census_wide <- census_clean %>%
+  select(GEOID, variable, estimate) %>%
+  pivot_wider(names_from = variable, values_from = estimate)
+
+# Prepare CDC: Pivot wide so one row per county
+# Note: Ensure 'measure' column contains unique values for each row
+cdc_wide <- cdc_clean %>%
+  group_by(GEOID, measure) %>%
+  summarise(data_value = mean(data_value, na.rm = TRUE), .groups = "drop") %>%
+  
+  # Pivot to wide format safely
+  pivot_wider(names_from = measure, values_from = data_value)
+
+# Final Master Merge
+master_data <- census_wide %>%
+  left_join(cdc_wide,    by = "GEOID") %>%
+  left_join(usda_clean,  by = "GEOID") %>%
+  left_join(chrr_clean,  by = "GEOID")
+
+# Final Verification
+message("✅ Master dataset created with ", nrow(master_data), " rows.")
+```
+
+Successfully joined health, food access, and socioeconomic data into a single, analysis-ready structure
+
+There are approximately 3,140 to 3,240 counties in the U.S. 
+~3,222 rows have effectively captured the entire population of the United States at the county level
+
+```{r}
+# Save as a CSV for easy access or RDS for R-specific efficiency
+write.csv(master_data, "data/processed/master_dataset.csv", row.names = FALSE)
+saveRDS(master_data, "data/processed/master_dataset.rds")
+```
+
+## Data Limitations
+
+Data from multiple years (2019–2025) were integrated to provide the most comprehensive county-level view. Socioeconomic metrics (ACS) represent the most recent reliable 5-year estimates (2023), while health indicators reflect the latest available public data (2025).
+
+# References
