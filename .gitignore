@@ -9,6 +9,10 @@ data/**/*.csv
 # But specifically allow the master dataset
 !data/processed/master_dataset.csv
 
+# Exclude bulky raw binary data files
+*.xlsx
+*.xls
+
 # 2. R Environment and Temporary History
 # Excludes local workspace files and command history logs
 .Rhistory
