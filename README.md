@@ -102,4 +102,5 @@ The Hypertension Risk Atlas is designed to **identify and prioritize** high-risk
 
 ---
 
-*Note on AI assistance: AI tools were used to support drafting and code scaffolding during this project. Per course policy, their contributions are disclosed and reviewed, and all analytical decisions and interpretations are the team's own.*
+*Note on AI assistance: AI tools were used to support drafting and code scaffolding during this project. During the preparation of this work, the authors used Gemini, an AI-based large language model, to assist with initial research, the synthesis of the literature review, and the development of data ingestion strategies. After using this tool, the authors validated and edited all output content, including technical terminology and research summaries, to ensure accuracy and take full responsibility for the final content of the publication.
+
