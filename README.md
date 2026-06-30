@@ -1,5 +1,3 @@
-# ADS599_Project
-
 # Hypertension Risk Atlas
 
 **ADS-599 Capstone Project — University of San Diego**
