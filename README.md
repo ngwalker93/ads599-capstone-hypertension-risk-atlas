@@ -64,7 +64,8 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 Hypertension-Risk-Atlas/
 ├── data/
 │   ├── raw/             # source files (not version-controlled if large)
-│   └── processed/       # master_dataset.csv (cleaned analytic table)
+│   ├── processed/       # master_dataset.csv (cleaned analytic table)
+│   └── validation/       # automated validation summaries for raw source datasets
 ├── code/
 │   ├── etl/             # ingestion & merge (R)
 │   ├── eda/             # exploratory analysis notebooks
