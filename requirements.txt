@@ -1,6 +1,7 @@
 # Data manipulation
 pandas>=2.0.0
 numpy>=1.24.0
+openpyxl==3.1.5
 
 # Visualization
 plotly>=6.8.0
