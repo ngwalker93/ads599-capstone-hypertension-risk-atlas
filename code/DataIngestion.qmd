@@ -374,6 +374,16 @@ write.csv(master_data, "data/processed/master_dataset.csv", row.names = FALSE)
 saveRDS(master_data, "data/processed/master_dataset.rds")
 ```
 
+## Install packages to R environment 
+
+```{r}
+# Install if missing
+if(length(new.packages)) install.packages(new.packages)
+
+# Load all packages at once
+lapply(list.of.packages, library, character.only = TRUE)
+```
+
 ## Data Limitations
 
 Data from multiple years (2019–2025) were integrated to provide the most comprehensive county-level view. Socioeconomic metrics (ACS) represent the most recent reliable 5-year estimates (2023), while health indicators reflect the latest available public data (2025).

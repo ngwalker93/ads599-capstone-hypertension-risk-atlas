@@ -95,6 +95,41 @@ Hypertension-Risk-Atlas/
 
 ---
 
+## Activate Virtual Environment (Python)
+
+Use python 3.10+ to create and activate a virtual environment for this project.
+
+```bash
+# Create virtual environment (if not already created)
+python -m venv .venv
+# Activate virtual environment
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+```
+
+---
+
+## Install Dependencies (Python)
+
+```bash
+# Install dependencies from requirements.txt
+pip install -r requirements.txt
+```
+
+## Install Dependencies (R)
+
+```r
+# Install dependencies from renv.lock (if using renv)
+# Install renv if not already installed
+install.packages("renv")
+# Restore packages from renv.lock
+renv::restore()
+```
+
+---
+
 ## Scope & Intended Use
 
 The Hypertension Risk Atlas is designed to **identify and prioritize** high-risk counties and inform the planning of targeted prevention activities. Consistent with the intended use of the underlying CDC PLACES small-area estimates, it is **not** intended to evaluate the effectiveness of specific programs or policies.
