@@ -64,7 +64,8 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 Hypertension-Risk-Atlas/
 ├── data/
 │   ├── raw/             # source files (not version-controlled if large)
-│   └── processed/       # master_dataset.csv (cleaned analytic table)
+│   ├── processed/       # master_dataset.csv (cleaned analytic table)
+│   └── validation/       # automated validation summaries for raw source datasets
 ├── code/
 │   ├── etl/             # ingestion & merge (R)
 │   ├── eda/             # exploratory analysis notebooks
@@ -91,6 +92,41 @@ Hypertension-Risk-Atlas/
 - **Languages/Environments:** R (ETL), Python (analysis & modeling), Jupyter Notebook, VS Code
 - **Version control:** GitHub (with GitHub Projects Kanban board for task tracking)
 - **Collaboration:** Slack (coordination), Zoom (working sessions), shared Google Drive (documents)
+
+---
+
+## Activate Virtual Environment (Python)
+
+Use python 3.10+ to create and activate a virtual environment for this project.
+
+```bash
+# Create virtual environment (if not already created)
+python -m venv .venv
+# Activate virtual environment
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+```
+
+---
+
+## Install Dependencies (Python)
+
+```bash
+# Install dependencies from requirements.txt
+pip install -r requirements.txt
+```
+
+## Install Dependencies (R)
+
+```r
+# Install dependencies from renv.lock (if using renv)
+# Install renv if not already installed
+install.packages("renv")
+# Restore packages from renv.lock
+renv::restore()
+```
 
 ---
 

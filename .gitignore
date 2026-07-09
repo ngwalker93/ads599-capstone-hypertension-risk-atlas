@@ -35,6 +35,15 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .venv/
+
+# We want to ignore the massive library folder
+renv/library/
+renv/local/
+renv/staging/
+# BUT we MUST track these files to allow renv::restore() to work
+!renv/activate.R
+!renv/settings.json
+
 .env/
 .pytest_cache/
 
