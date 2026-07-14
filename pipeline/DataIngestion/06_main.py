@@ -1,3 +1,11 @@
+"""
+STATUS: WORK IN PROGRESS
+Project: ADS599 Capstone - Hypertension Risk Atlas
+File: 06_main.py
+Note: This script is currently under development. 
+      DO NOT run in production.
+"""
+
 import subprocess
 import sys
 from pathlib import Path

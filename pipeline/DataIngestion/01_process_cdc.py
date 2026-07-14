@@ -4,35 +4,59 @@ import matplotlib
 matplotlib.use('Agg')  # Prevents the "intrinsic size" warning
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
+import requests
+from paths import DATA_RAW, DATA_PROCESSED, FIGURES_DIR
+from utils import get_file_hash
 
-def get_project_root():
-    current_path = Path.cwd()
-    # Keep going up until we find our project folder
-    while current_path.name != "ADS599_Capstone_Hypertension_Risk_Atlas":
-        if current_path == current_path.parent: # Reached the system root
-            raise FileNotFoundError("Could not find project root folder!")
-        current_path = current_path.parent
-    return current_path
-
-# Now define your paths using this function
-base_path = get_project_root()
-raw_path = base_path / "data" / "raw" / "cdc_places_aa_raw.csv"
-processed_dir = base_path / "data" / "processed"
-figures_dir = base_path / "data" / "figures"  
-
-# Debugging: Print to verify the location
-print(f"DEBUG: Looking for raw data at: {raw_path}")
-print(f"DEBUG: Saving processed data to: {processed_dir}")
+def get_cdc_data():
+    # Define paths and URLs
+    file_path = DATA_RAW / "cdc_places_aa_raw.csv"
+    base_url = "https://data.cdc.gov/resource/swc5-untb.csv"
+    
+    # URL encoded query for Age-adjusted prevalence
+    # Socrata uses SoQL query language; adding it as a parameter
+    params = {
+        "$where": "data_value_type='Age-adjusted prevalence'"
+    }
+    
+    # Defensive Check
+    if file_path.exists():
+        print("🚀 Local CDC PLACES cache found! Loading from disk...")
+        return pd.read_csv(file_path)
+    
+    else:
+        print("🌐 Connecting to CDC PLACES API... Fetching filtered data...")
+        try:
+            # Fetch data from API
+            response = requests.get(base_url, params=params)
+            response.raise_for_status() # Raise error for bad network calls
+            
+            # Save to raw folder
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            
+            print(f"✅ Filtered CDC PLACES dataset saved to {file_path}")
+            return pd.read_csv(file_path)
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Error connecting to API: {e}")
+            raise
 
 def clean_cdc():
 
     # Ensure directories exist
-    processed_dir.mkdir(parents=True, exist_ok=True)
-    figures_dir.mkdir(parents=True, exist_ok=True)
+    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     
     # Load
-    df = pd.read_csv(raw_path, dtype={'data_value_footnote_symbol': str, 'data_value_footnote': str})
+    raw_data_path = DATA_RAW / "cdc_places_aa_raw.csv"
+    if raw_data_path.exists():
+        print(f"File fingerprint: {get_file_hash(raw_data_path)}")
+    df = pd.read_csv(raw_data_path, dtype={'data_value_footnote_symbol': str, 'data_value_footnote': str})
+
+    # Verify integrity before cleaning
+    current_hash = get_file_hash(raw_data_path)
+    print(f"CDC Data Fingerprint: {current_hash}")
 
     # Clean
     df = df.drop(columns=['data_value_footnote', 'data_value_footnote_symbol', 'low_confidence_limit', 'high_confidence_limit'], errors='ignore')
@@ -55,6 +79,12 @@ def clean_cdc():
         values='data_value'
     ).reset_index()
 
+    # After the pivot_table, ensure we have all selected measures
+    missing = [m for m in selected_measures if m not in df.columns]
+    if missing:
+        # Raise an error to stop the pipeline before you train a model on bad data
+        raise ValueError(f"CRITICAL: The following measures were not found after pivot: {missing}")
+
     # Apply padding immediately so it is ready for all downstream tasks
     df['locationid'] = df['locationid'].astype(str).str.zfill(5)
 
@@ -72,7 +102,7 @@ def clean_cdc():
         plt.figure(figsize=(10, 6))
         sns.histplot(df['BPHIGH'], kde=True, color='red')
         plt.title('Distribution of BPHIGH across U.S. Counties')
-        plt.savefig(figures_dir / "bphigh_distribution.png")
+        plt.savefig(FIGURES_DIR / "bphigh_distribution.png")
         plt.close() # Close plot to free memory
 
     # Visualization: Correlation Heatmap
@@ -83,12 +113,12 @@ def clean_cdc():
     sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1, square=True)
     plt.title('Feature Correlation Heatmap: Health & SDoH Indicators')
     plt.tight_layout()
-    plt.savefig(figures_dir / "feature_correlation_heatmap.png")
+    plt.savefig(FIGURES_DIR / "feature_correlation_heatmap.png")
     plt.close()
 
     # Save Processed Data
-    df.to_csv(processed_dir / "processed_cdc_data.csv", index=False)
-    print(f"✅ Cleaned data and figures saved to {processed_dir} and {figures_dir}")
+    df.to_csv(DATA_PROCESSED / "processed_cdc_data.csv", index=False)
+    print(f"✅ Cleaned data and figures saved to {DATA_PROCESSED} and {DATA_PROCESSED}")
 
     print("------------------------------------------------------------------")
     print("🚀 01_process_cdc.py completed successfully. Moving to next task...")
