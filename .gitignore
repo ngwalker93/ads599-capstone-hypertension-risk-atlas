@@ -7,7 +7,7 @@
 data/**/*.csv
 
 # But specifically allow the master dataset
-!data/processed/master_dataset.csv
+!data/processed/master_dataset_all_variables.csv
 
 # Exclude bulky raw binary data files
 *.xlsx
