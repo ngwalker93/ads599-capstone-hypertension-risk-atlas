@@ -1,25 +1,29 @@
+"""
+This script processes the County Health Rankings & Roadmaps (CHR&R) data, focusing on:
+1. Loading the raw CSV data.
+2. Cleaning and transforming the data, including handling missing values and reliability flags.
+3. Extracting metadata and feature sets.
+The final cleaned datasets are saved for downstream analysis.
+"""
+
 import pandas as pd
 import numpy as np 
 import seaborn as sns
-from paths import DATA_RAW, DATA_PROCESSED, VALIDATION_DIR, FIGURES_DIR
+from paths import DATA_RAW, DATA_PROCESSED, VALIDATION_DIR, FIGURES_DIR, validate_and_alert
 from utils import get_file_hash, get_missingness_summary
 
-def load_data():
-   # Ensure directories exist
-    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # Load
-    raw_data_path = DATA_RAW / "analytic_data2025.csv"
-    if raw_data_path.exists():
-        print(f"File fingerprint: {get_file_hash(raw_data_path)}")
-    df = pd.read_csv(raw_data_path, header=1, dtype={'fipscode': str}, low_memory=False)
-    # Pad with a leading zero if it's only 4 digits (e.g., '1001' -> '01001')
-    df['fipscode'] = df['fipscode'].str.zfill(5)
+chrr_instructions = """
+1. Go to: https://www.countyhealthrankings.org/health-data/methodology-and-sources/data-documentation
+2. Under the '2025 Annual Data Release' section, download the '2025 CHR CSV Analytic Data'.
+3. Move the file into: 'data/raw/'.
+4. Rename it to: 'analytic_data2025.csv'.
+5. Re-run this Python pipeline.
+"""
 
-    # Verify integrity before cleaning
-    current_hash = get_file_hash(raw_data_path)
-    print(f"CDC Data Fingerprint: {current_hash}")
+def load_data(path):
+    print(f"🚀 Loading CHR&R data from: {path}")
+    df = pd.read_csv(path, header=1, dtype={'fipscode': str}, low_memory=False)
+    df['fipscode'] = df['fipscode'].str.zfill(5)
     return df
 
 def process_data_reliability(df):
@@ -147,16 +151,29 @@ def clean_data(df):
    return df_final, df_metadata, df_features
 
 def main():
-    df = load_data()
-    # Unpack the three dataframes
-    df_metadata, df_features, df_final = clean_data(df)
+    # Path Definition
+    raw_path = DATA_RAW / "analytic_data2025.csv"
     
-    processed_path = VALIDATION_DIR # Use path from paths.py
-    processed_path.mkdir(parents=True, exist_ok=True)
+    # Validation & Hash
+    validate_and_alert(raw_path, "CHR&R Data", chrr_instructions)
+    print(f"🔍 Data Fingerprint: {get_file_hash(raw_path)}")
     
-    df_metadata.to_csv(processed_path / "chrr_metadata_backup.csv", index=False)
-    df_features.to_csv(processed_path / "chrr_features_cleaned.csv", index=False)
-    df_final.to_csv(processed_path / "chrr_final_cleaned.csv", index=False)
+    # Processing
+    df = load_data(raw_path)
+    df_final, df_metadata, df_features = clean_data(df)
+
+    # Ensure fipscode is the first column in your cleaned output
+    cols = ['fipscode'] + [c for c in df_final.columns if c != 'fipscode']
+    df_final = df_final[cols]
+    
+    # Sort for predictability
+    df_final = df_final.sort_values('fipscode')
+    
+    # Save
+    VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
+    df_metadata.to_csv(VALIDATION_DIR / "chrr_metadata_backup.csv", index=False)
+    df_features.to_csv(VALIDATION_DIR / "chrr_features_cleaned.csv", index=False)
+    df_final.to_csv(VALIDATION_DIR / "chrr_final_cleaned.csv", index=False)
     print("✅ Files saved successfully.")
 
 if __name__ == "__main__":

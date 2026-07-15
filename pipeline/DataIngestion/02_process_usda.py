@@ -1,5 +1,20 @@
+"""
+This script handles the ingestion and processing of the USDA Food Access Research Atlas data.
+It checks for the existence of the raw data file, processes it to handle missing values, 
+aggregates it to the county level, and saves the cleaned data for downstream tasks.
+"""
+
 import pandas as pd
-from paths import DATA_RAW, DATA_PROCESSED
+from paths import DATA_RAW, DATA_PROCESSED, validate_and_alert
+from utils import get_file_hash
+
+usda_instructions = """
+1. Go to: https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data#:~:text=Food%20Access%20Research%20Atlas%20Data%20Download%202019
+2. Download the 'Food Access Research Atlas Data 2019 (XLSX)'.
+3. Move the file into: 'data/raw/'.
+4. Rename it to: 'FoodAccessResearchAtlasData2019.xlsx'.
+5. Re-run this Python pipeline.
+"""
 
 def load_data():
     """Handles raw data ingestion using centralized paths."""
@@ -125,23 +140,36 @@ def aggregate_to_county(df):
     return county
 
 def process_usda():
-    # 1. Setup
+    # Setup
+    raw_path = DATA_RAW / "FoodAccessResearchAtlasData2019.xlsx"
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
     
+    # VALIDATION
+    validate_and_alert(raw_path, "USDA Food Atlas", usda_instructions)
+
+    # Hash Verification
+    print(f"🔍 Data Fingerprint: {get_file_hash(raw_path)}")
+    
+    # Processing (We now know the file exists)
     try:
-        # Ingest
-        df = load_data()
+        print(f"🚀 Loading USDA data from: {raw_path}")
+        df = pd.read_excel(raw_path, sheet_name='Food Access Research Atlas', dtype={'CensusTract': str})
         
         # Transform
         df_cleaned = handle_missing_values(df)
         county_df = aggregate_to_county(df_cleaned)
+
+        # FIPS Cleaning Step for master Join 
+        county_df = county_df.rename(columns={'CountyFIPS': 'fipscode'})
+
+        # Ensure padding to 5 digits (Critical for consistent merging)
+        county_df['fipscode'] = county_df['fipscode'].str.zfill(5)        
     
         # Save
         out_path = DATA_PROCESSED / "processed_usda_county_data.csv"
         county_df.to_csv(out_path, index=False)
         
         print(f"✅ Success! USDA data saved to {out_path}")
-        print(f"📊 Final shape: {county_df.shape}")
         
     except Exception as e:
         print(f"❌ Pipeline failed: {e}")

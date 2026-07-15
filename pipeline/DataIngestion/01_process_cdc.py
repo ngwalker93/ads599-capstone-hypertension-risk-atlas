@@ -1,49 +1,34 @@
+"""
+This script processes the CDC PLACES dataset, ensuring that the data is cleaned, transformed, 
+and visualized for further analysis. It checks for the existence of the raw data file, processes it, 
+and generates visualizations for key health indicators. The cleaned data is then saved for downstream tasks.
+"""
+
 import pandas as pd
 import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')  # Prevents the "intrinsic size" warning
 import matplotlib.pyplot as plt
 import numpy as np
-import requests
-from paths import DATA_RAW, DATA_PROCESSED, FIGURES_DIR
+from paths import DATA_RAW, DATA_PROCESSED, FIGURES_DIR, validate_and_alert
 from utils import get_file_hash
 
-def get_cdc_data():
-    # Define paths and URLs
-    file_path = DATA_RAW / "cdc_places_aa_raw.csv"
-    base_url = "https://data.cdc.gov/resource/swc5-untb.csv"
-    
-    # URL encoded query for Age-adjusted prevalence
-    # Socrata uses SoQL query language; adding it as a parameter
-    params = {
-        "$where": "data_value_type='Age-adjusted prevalence'"
-    }
-    
-    # Defensive Check
-    if file_path.exists():
-        print("🚀 Local CDC PLACES cache found! Loading from disk...")
-        return pd.read_csv(file_path)
-    
-    else:
-        print("🌐 Connecting to CDC PLACES API... Fetching filtered data...")
-        try:
-            # Fetch data from API
-            response = requests.get(base_url, params=params)
-            response.raise_for_status() # Raise error for bad network calls
-            
-            # Save to raw folder
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
-            
-            print(f"✅ Filtered CDC PLACES dataset saved to {file_path}")
-            return pd.read_csv(file_path)
-            
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Error connecting to API: {e}")
-            raise
+# Define instructions for the CDC dataset
+cdc_instructions = """
+1. Open your R environment.
+2. Run the script: 'pipeline/Rsrc/01_get_cdc_places.R'.
+3. Ensure the output is saved to 'data/raw/cdc_places_aa_raw.csv'.
+4. Re-run this Python pipeline.
+"""
 
 def clean_cdc():
-
+    # Validate existence using the shared utility
+    raw_path = DATA_RAW / "cdc_places_aa_raw.csv"
+    validate_and_alert(raw_path, "CDC PLACES", cdc_instructions)
+    
+    # Proceed with cleaning (No more if/else for existence!)
+    print(f"🚀 Processing {raw_path}...")
+    df = pd.read_csv(raw_path, dtype={'data_value_footnote_symbol': str, 'data_value_footnote': str})
     # Ensure directories exist
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
@@ -115,6 +100,9 @@ def clean_cdc():
     plt.tight_layout()
     plt.savefig(FIGURES_DIR / "feature_correlation_heatmap.png")
     plt.close()
+
+    # FIPS Cleaning Step for master Join 
+    df = df.rename(columns={'locationid': 'fipscode'})
 
     # Save Processed Data
     df.to_csv(DATA_PROCESSED / "processed_cdc_data.csv", index=False)
