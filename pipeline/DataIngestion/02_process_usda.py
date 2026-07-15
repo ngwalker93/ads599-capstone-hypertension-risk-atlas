@@ -1,24 +1,30 @@
+"""
+This script handles the ingestion and processing of the USDA Food Access Research Atlas data.
+It checks for the existence of the raw data file, processes it to handle missing values, 
+aggregates it to the county level, and saves the cleaned data for downstream tasks.
+"""
+
 import pandas as pd
-from pathlib import Path
-import os
+from paths import DATA_RAW, DATA_PROCESSED, validate_and_alert
+from utils import get_file_hash
 
-# Root and Path Setup 
-def get_project_root():
-    current_path = Path.cwd()
-    # Keep going up until we find our project folder
-    while current_path.name != "ADS599_Capstone_Hypertension_Risk_Atlas":
-        if current_path == current_path.parent:
-            raise FileNotFoundError("Could not find project root folder!")
-        current_path = current_path.parent
-    return current_path
+usda_instructions = """
+1. Go to: https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data#:~:text=Food%20Access%20Research%20Atlas%20Data%20Download%202019
+2. Download the 'Food Access Research Atlas Data 2019 (XLSX)'.
+3. Move the file into: 'data/raw/'.
+4. Rename it to: 'FoodAccessResearchAtlasData2019.xlsx'.
+5. Re-run this Python pipeline.
+"""
 
-# Functional Steps 
-def load_data(path):
-    """Handles raw data ingestion."""
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"The file {path} was not found!")
-    print(f"🚀 Loading USDA data from: {path}")
-    return pd.read_excel(path, sheet_name='Food Access Research Atlas', dtype={'CensusTract': str})
+def load_data():
+    """Handles raw data ingestion using centralized paths."""
+    file_path = DATA_RAW / "FoodAccessResearchAtlasData2019.xlsx"
+    
+    if not file_path.exists():
+        raise FileNotFoundError(f"The file {file_path} was not found!")
+    
+    print(f"🚀 Loading USDA data from: {file_path}")
+    return pd.read_excel(file_path, sheet_name='Food Access Research Atlas', dtype={'CensusTract': str})
 
 def handle_missing_values(df):
     """Encapsulates all your missingness/structural cleaning rules."""
@@ -134,25 +140,40 @@ def aggregate_to_county(df):
     return county
 
 def process_usda():
-    try:
-        # define paths 
-        base_path = get_project_root()
-        raw_path = base_path / "data" / "raw" / "FoodAccessResearchAtlasData2019.xlsx"
-        processed_dir = base_path / "data" / "processed"
-        processed_dir.mkdir(parents=True, exist_ok=True)
+    # Setup
+    raw_path = DATA_RAW / "FoodAccessResearchAtlasData2019.xlsx"
+    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
     
-        # Run pipeline
-        df = load_data(raw_path)
+    # VALIDATION
+    validate_and_alert(raw_path, "USDA Food Atlas", usda_instructions)
+
+    # Hash Verification
+    print(f"🔍 Data Fingerprint: {get_file_hash(raw_path)}")
+    
+    # Processing (We now know the file exists)
+    try:
+        print(f"🚀 Loading USDA data from: {raw_path}")
+        df = pd.read_excel(raw_path, sheet_name='Food Access Research Atlas', dtype={'CensusTract': str})
+        
+        # Transform
         df_cleaned = handle_missing_values(df)
         county_df = aggregate_to_county(df_cleaned)
+
+        # FIPS Cleaning Step for master Join 
+        county_df = county_df.rename(columns={'CountyFIPS': 'fipscode'})
+
+        # Ensure padding to 5 digits (Critical for consistent merging)
+        county_df['fipscode'] = county_df['fipscode'].str.zfill(5)        
     
-        # Save result
-        out_path = processed_dir / "Food_Access_County_2019.csv"
+        # Save
+        out_path = DATA_PROCESSED / "processed_usda_county_data.csv"
         county_df.to_csv(out_path, index=False)
+        
         print(f"✅ Success! USDA data saved to {out_path}")
-        print(f"📊 Final shape: {county_df.shape}")
+        
     except Exception as e:
         print(f"❌ Pipeline failed: {e}")
+        raise
 
 if __name__ == "__main__":
     process_usda()

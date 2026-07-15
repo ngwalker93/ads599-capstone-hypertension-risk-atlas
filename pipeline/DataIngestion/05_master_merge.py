@@ -1,1 +1,0 @@
-# write after Validation EDA compleate 
