@@ -1,38 +1,47 @@
+"""
+This script processes the CDC PLACES dataset, ensuring that the data is cleaned, transformed, 
+and visualized for further analysis. It checks for the existence of the raw data file, processes it, 
+and generates visualizations for key health indicators. The cleaned data is then saved for downstream tasks.
+"""
+
 import pandas as pd
 import seaborn as sns
 import matplotlib
 matplotlib.use('Agg')  # Prevents the "intrinsic size" warning
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
+from paths import DATA_RAW, DATA_PROCESSED, FIGURES_DIR, validate_and_alert
+from utils import get_file_hash
 
-def get_project_root():
-    current_path = Path.cwd()
-    # Keep going up until we find our project folder
-    while current_path.name != "ADS599_Capstone_Hypertension_Risk_Atlas":
-        if current_path == current_path.parent: # Reached the system root
-            raise FileNotFoundError("Could not find project root folder!")
-        current_path = current_path.parent
-    return current_path
-
-# Now define your paths using this function
-base_path = get_project_root()
-raw_path = base_path / "data" / "raw" / "cdc_places_aa_raw.csv"
-processed_dir = base_path / "data" / "processed"
-figures_dir = base_path / "data" / "figures"  
-
-# Debugging: Print to verify the location
-print(f"DEBUG: Looking for raw data at: {raw_path}")
-print(f"DEBUG: Saving processed data to: {processed_dir}")
+# Define instructions for the CDC dataset
+cdc_instructions = """
+1. Open your R environment.
+2. Run the script: 'pipeline/Rsrc/01_get_cdc_places.R'.
+3. Ensure the output is saved to 'data/raw/cdc_places_aa_raw.csv'.
+4. Re-run this Python pipeline.
+"""
 
 def clean_cdc():
-
+    # Validate existence using the shared utility
+    raw_path = DATA_RAW / "cdc_places_aa_raw.csv"
+    validate_and_alert(raw_path, "CDC PLACES", cdc_instructions)
+    
+    # Proceed with cleaning (No more if/else for existence!)
+    print(f"🚀 Processing {raw_path}...")
+    df = pd.read_csv(raw_path, dtype={'data_value_footnote_symbol': str, 'data_value_footnote': str})
     # Ensure directories exist
-    processed_dir.mkdir(parents=True, exist_ok=True)
-    figures_dir.mkdir(parents=True, exist_ok=True)
+    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     
     # Load
-    df = pd.read_csv(raw_path, dtype={'data_value_footnote_symbol': str, 'data_value_footnote': str})
+    raw_data_path = DATA_RAW / "cdc_places_aa_raw.csv"
+    if raw_data_path.exists():
+        print(f"File fingerprint: {get_file_hash(raw_data_path)}")
+    df = pd.read_csv(raw_data_path, dtype={'data_value_footnote_symbol': str, 'data_value_footnote': str})
+
+    # Verify integrity before cleaning
+    current_hash = get_file_hash(raw_data_path)
+    print(f"CDC Data Fingerprint: {current_hash}")
 
     # Clean
     df = df.drop(columns=['data_value_footnote', 'data_value_footnote_symbol', 'low_confidence_limit', 'high_confidence_limit'], errors='ignore')
@@ -55,6 +64,12 @@ def clean_cdc():
         values='data_value'
     ).reset_index()
 
+    # After the pivot_table, ensure we have all selected measures
+    missing = [m for m in selected_measures if m not in df.columns]
+    if missing:
+        # Raise an error to stop the pipeline before you train a model on bad data
+        raise ValueError(f"CRITICAL: The following measures were not found after pivot: {missing}")
+
     # Apply padding immediately so it is ready for all downstream tasks
     df['locationid'] = df['locationid'].astype(str).str.zfill(5)
 
@@ -72,7 +87,7 @@ def clean_cdc():
         plt.figure(figsize=(10, 6))
         sns.histplot(df['BPHIGH'], kde=True, color='red')
         plt.title('Distribution of BPHIGH across U.S. Counties')
-        plt.savefig(figures_dir / "bphigh_distribution.png")
+        plt.savefig(FIGURES_DIR / "bphigh_distribution.png")
         plt.close() # Close plot to free memory
 
     # Visualization: Correlation Heatmap
@@ -83,12 +98,15 @@ def clean_cdc():
     sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1, square=True)
     plt.title('Feature Correlation Heatmap: Health & SDoH Indicators')
     plt.tight_layout()
-    plt.savefig(figures_dir / "feature_correlation_heatmap.png")
+    plt.savefig(FIGURES_DIR / "feature_correlation_heatmap.png")
     plt.close()
 
+    # FIPS Cleaning Step for master Join 
+    df = df.rename(columns={'locationid': 'fipscode'})
+
     # Save Processed Data
-    df.to_csv(processed_dir / "processed_cdc_data.csv", index=False)
-    print(f"✅ Cleaned data and figures saved to {processed_dir} and {figures_dir}")
+    df.to_csv(DATA_PROCESSED / "processed_cdc_data.csv", index=False)
+    print(f"✅ Cleaned data and figures saved to {DATA_PROCESSED} and {DATA_PROCESSED}")
 
     print("------------------------------------------------------------------")
     print("🚀 01_process_cdc.py completed successfully. Moving to next task...")
