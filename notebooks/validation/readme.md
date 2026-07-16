@@ -1,7 +1,7 @@
-# EDA Notebooks — Hypertension Risk Atlas
+# EDA Notebooks/Validation — Hypertension Risk Atlas
 
 This folder contains the exploratory data analysis (EDA) notebooks for the
-Hypertension Risk Atlas capstone project.
+Hypertension Risk Atlas capstone project from 4 different sourcing data.
 
 ## Contents
 
