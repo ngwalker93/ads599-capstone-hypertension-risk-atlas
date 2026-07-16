@@ -43,18 +43,20 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 | U.S. Census Bureau (ACS) | Socioeconomic context (income, poverty, housing) | 6,444 records × 5 cols | Census Data API; free key |
 | County Health Rankings (CHR&R) | Social & clinical community health metrics | 3,204 counties × 796 cols | Download / `countyhealthR`; no key |
 
-**Merged analytic dataset:** all sources standardized to county-level GEOID and joined into a single table of **3,222 rows × 872 columns** (before cleaning). Target variable: county-level hypertension prevalence.
+**Merged analytic dataset:** all sources standardized to county-level GEOID and joined into a single table of **3,231 rows × 120 columns** (before cleaning). Target variable: county-level hypertension prevalence (BPHIGH).
 
 ---
 
 ## Planned Methodology
 
-1. **Data acquisition** — programmatic ingestion from the four sources (ETL implemented in R), with retrieval date and source version logged for reproducibility.
-2. **Data preparation** — standardize to county GEOID, resolve data-grain differences, remove redundant/leakage fields, handle missing values.
-3. **Exploratory data analysis** — distributions, geographic patterns, correlations, and multicollinearity.
-4. **Modeling** — Lasso/PCA feature pruning; Linear Regression baseline vs. Random Forest and XGBoost.
-5. **Evaluation** — R², RMSE, MAE against a baseline; residual analysis for geographic bias.
-6. **Interpretation** — SHAP to rank the place-based drivers behind each prediction.
+1. **Data acquisition** — Programmatic ingestion from the four primary sources (CDC, USDA, Census, and CHR&R), with automated logging of source versions and metadata.
+2. **Data preparation** — Standardization to 5-digit fipscode (GEOID) across all datasets, resolution of data-grain differences, and strict isolation of modeling data from validation data. 
+3. **Exploratory data analysis** — Assessment of distributions, geographic patterns, correlation heatmaps, and systematic handling of multicollinearity.
+4. **Relational Integration** — All datasets are processed through a modular Python pipeline and hosted in a SQLite relational database, enabling reproducible analysis and dashboard-ready SQL views.
+5. **Feature Engineering and Dimensionality Reduction** — Creation of new features (e.g., food access ratios, composite socioeconomic indices) and application of PCA to reduce dimensionality while retaining variance in the predictors.
+5. **Modeling** — Linear Regression baseline vs. Random Forest and XGBoost.Feature selection via correlation analysis; establishment of Linear Regression baselines compared against ensemble models (Random Forest and XGBoost).
+6. **Evaluation** — Performance assessment using $R^2$, RMSE, and MAE against baselines; residual analysis to identify potential geographic bias.
+7. **Interpretation** — Utilization of SHAP (SHapley Additive exPlanations) to interpret model predictions and quantify the influence of place-based drivers on hypertension risk.
 
 ---
 
@@ -63,16 +65,31 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 ```
 Hypertension-Risk-Atlas/
 ├── data/
+│   ├── figures/         # exploratory analysis figures (not version-controlled if large)
+│   ├── final/           # final analytic dataset (cleaned, merged, and feature-engineered)
+│   ├── processed/       # location of all datasets created by the ETL pipeline (cleaned, merged, and feature-engineered)
 │   ├── raw/             # source files (not version-controlled if large)
-│   └── processed/       # master_dataset.csv (cleaned analytic table)
-├── code/
-│   ├── etl/             # ingestion & merge (R)
-│   ├── eda/             # exploratory analysis notebooks
+│   └── validation/      # validation datasets (raw source datasets with validation checks)
+├── notebooks/
+│   ├── DataIngestion/    # folder containing .qmd files that ingest data from CDC, USDA, Census, and CHR&R
+│   ├── EDA/              # folder containing .ipynb notebooks for exploratory data analysis
+│   └──  validation/      # folder containing .ipynb notebooks for validation of raw source datasets
+├── pipeline/
+│   ├── DataIngestion/   # ingestion & merge scripts (python)
+│   ├── R_src/           # R scripts to retrive raw data via API calls and downloads
 │   └── modeling/        # model training & evaluation
-├── images/              # figures, maps, SHAP plots
-├── app/                 # Streamlit Hypertension Risk Atlas (planned)
-├── docs/                # proposal, capstone article drafts
-└── README.md
+├── .gitignore            
+├── ADS599_Project.Rproj  # RStudio project file
+├── audit_data            # Check for data integrity and completeness
+├── hypertension_atlas.db # SQLite database of merged datasets
+├── LICENSE 
+├── main.py                # main script to run the entire pipeline
+├── paths.py              # filepaths for data ingestion and modeling 
+├── README.md
+├── references.bib         # bibliography for literature review
+├── {} renv.lock           # R dependencies
+├── requirements.txt       # Python dependencies             
+└── utils.py               # utility functions for data ingestion and modeling
 ```
 
 ---
@@ -91,6 +108,41 @@ Hypertension-Risk-Atlas/
 - **Languages/Environments:** R (ETL), Python (analysis & modeling), Jupyter Notebook, VS Code
 - **Version control:** GitHub (with GitHub Projects Kanban board for task tracking)
 - **Collaboration:** Slack (coordination), Zoom (working sessions), shared Google Drive (documents)
+
+---
+
+## Activate Virtual Environment (Python)
+
+Use python 3.10+ to create and activate a virtual environment for this project.
+
+```bash
+# Create virtual environment (if not already created)
+python -m venv .venv
+# Activate virtual environment
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source .venv/bin/activate
+```
+
+---
+
+## Install Dependencies (Python)
+
+```bash
+# Install dependencies from requirements.txt
+pip install -r requirements.txt
+```
+
+## Install Dependencies (R)
+
+```r
+# Install dependencies from renv.lock (if using renv)
+# Install renv if not already installed
+install.packages("renv")
+# Restore packages from renv.lock
+renv::restore()
+```
 
 ---
 
