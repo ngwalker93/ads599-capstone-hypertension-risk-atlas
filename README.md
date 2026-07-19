@@ -159,6 +159,14 @@ renv::restore()
 ```
 
 ---
+## Run Data Pipeline
+
+```bash
+# Run the main.py script to execute the entire data pipeline
+python main.py
+```
+
+---
 
 ## Running the Pipeline
 

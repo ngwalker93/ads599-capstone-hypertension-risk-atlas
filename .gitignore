@@ -6,8 +6,12 @@
 # Ignore ONLY large CSV files (if they are too big for GitHub)
 data/**/*.csv
 
-# But specifically allow the master dataset
+# But specifically allow the master, testing, and traing datasets
 !data/processed/master_dataset_all_variables.csv
+!data/final/X_test.csv
+!data/final/X_train.csv
+!data/final/y_test.csv
+!data/final/y_train.csv
 
 # Exclude bulky raw binary data files
 *.xlsx
