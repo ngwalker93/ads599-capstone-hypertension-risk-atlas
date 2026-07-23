@@ -1,5 +1,5 @@
 """
-This script runs the entire data ingestion pipeline by executing each step in sequence.
+This script runs the entire feature engineering pipeline by executing each step in sequence.
 It ensures that each step is executed in the correct order and handles any errors that may arise during execution.
 """
 import subprocess
@@ -9,12 +9,9 @@ from pathlib import Path
 
 # Define the variable at the global level so all functions can see it
 PIPELINE_STEPS = [
-    "pipeline/02_DataIngestion/01_process_cdc.py",
-    "pipeline/02_DataIngestion/02_process_usda.py",
-    "pipeline/02_DataIngestion/03_process_chrr_census.py",
-    "pipeline/02_DataIngestion/04_process_census_acs.py",
-    "pipeline/02_DataIngestion/05_master_dataset.py",
-    "pipeline/02_DataIngestion/06_load_to_sql.py"
+    "pipeline/03_FeatureEngineering/01_feature_engineering.py",
+    "pipeline/03_FeatureEngineering/02_train_test_split.py",
+    "pipeline/03_FeatureEngineering/03_pca_transformation.py"
 ]
 
 # Get the project root directory (the folder above pipeline/DataIngestion)

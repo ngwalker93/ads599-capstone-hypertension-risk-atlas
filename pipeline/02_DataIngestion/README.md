@@ -6,7 +6,11 @@ Key Files:
 
 - 01_process_cdc.py – Cleans CDC PLACES data.
 - 02_process_usda.py – Aggregates Food Atlas data.
-- 03_process_census.py – Standardizes ACS metrics.
+- 03_process_chrr_census.py – Standardizes CHR&R metrics.
+- 04_process_census_acs.py – Standardizes ACS metrics.
+- 05_master_dataset.py – Merges all cleaned datasets into a single master dataset.
+- 06_load_to_sql.py – Loads the master dataset into a SQL database.
+- 07_run_ingestion.py – Executes the entire ingestion and cleaning process.
 
 •  Step A (Python): produce the cleaned CSVs.
 •  Step B (Python): A single "Merge script" creating master_dataset.csv.
@@ -19,7 +23,7 @@ Key Files:
 
 How to run: 
 1. Clone the repository to your local machine.
-2. Navigate to the pipeline/DataIngestion directory.
+2. Navigate to the pipeline/02_DataIngestion directory.
 3. Run the cleaning scripts:
    - `python 07_run_ingestion.py` to execute the entire ingestion and cleaning process.
 
