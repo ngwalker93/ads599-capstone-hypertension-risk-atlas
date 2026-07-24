@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.impute import SimpleImputer
 from paths import DATA_FINAL, DATA_PROCESSED, validate_and_alert
 
 def apply_pca():
@@ -39,41 +40,57 @@ def apply_pca():
 
     print(f"Identified {len(la_family_refined)} refined la_family features for PCA.")
 
-    # Handle potential NaNs safely for PCA subset features
-    train_subset = x_train[la_family_refined].dropna()
-    valid_train_indices = train_subset.index
-    current_y_train = y_train.loc[valid_train_indices]
+    # Initialize the imputer (median is great for skewed census/health data)
+    imputer = SimpleImputer(strategy='median')
 
-    test_subset = x_test[la_family_refined].dropna()
-    valid_test_indices = test_subset.index
-    current_y_test = y_test.loc[valid_test_indices]
+    # Impute the la_family columns (Fit on train ONLY, transform both)
+    train_la_imputed = imputer.fit_transform(x_train[la_family_refined])
+    test_la_imputed = imputer.transform(x_test[la_family_refined])
 
-    # 2. Initialize and Fit PCA on Training Data Only (prevent data leakage)
+    # Convert back to DataFrames to keep column names and indices clean
+    train_la_df = pd.DataFrame(train_la_imputed, columns=la_family_refined, index=x_train.index)
+    test_la_df = pd.DataFrame(test_la_imputed, columns=la_family_refined, index=x_test.index)
+
+    # Initialize and Fit PCA on Training Data Only (prevent data leakage)
     n_components = 2
     la_pca = PCA(n_components=n_components, random_state=42)
     
-    x_train_pca = la_pca.fit_transform(train_subset)
-    x_test_pca = la_pca.transform(test_subset)
+    x_train_pca = la_pca.fit_transform(train_la_df)
+    x_test_pca = la_pca.transform(test_la_df)
     
     # Create readable column names for the PCA components
-    pca_columns = [f'PCA_Component_{i+1}' for i in range(n_components)]
+    pca_columns = [f'PCA_Component_{i+1}' for i in range(la_pca.n_components_)]
 
     # Convert results back into DataFrames with original valid indices
-    x_train_pca_df = pd.DataFrame(x_train_pca, columns=pca_columns, index=valid_train_indices)
-    x_test_pca_df = pd.DataFrame(x_test_pca, columns=pca_columns, index=valid_test_indices)
+    x_train_pca_df = pd.DataFrame(x_train_pca, columns=pca_columns, index=train_la_df.index)
+    x_test_pca_df = pd.DataFrame(x_test_pca, columns=pca_columns, index=test_la_df.index)
 
-    # 3. Reconstruct final datasets by dropping raw refined columns and adding PCA components
-    x_train_final = x_train.loc[valid_train_indices].drop(columns=la_family_refined)
-    x_test_final = x_test.loc[valid_test_indices].drop(columns=la_family_refined)
+    # Ensure the indices match up with your targets
+    assert x_train_pca_df.index.equals(y_train.index)
+    assert x_test_pca_df.index.equals(y_test.index)
+
+    # Reconstruct final datasets by dropping raw refined columns and adding PCA components
+    x_train_final = x_train.drop(columns=la_family_refined)
+    x_test_final = x_test.drop(columns=la_family_refined)
 
     x_train_final = pd.concat([x_train_final, x_train_pca_df], axis=1)
     x_test_final = pd.concat([x_test_final, x_test_pca_df], axis=1)
 
-    # Update y labels to match filtered indices
-    y_train_final = current_y_train
-    y_test_final = current_y_test
+    # isolate numeric columns for any further analysis or checks
+    numeric_cols = x_train_final.select_dtypes(include=[np.number]).columns
 
-    # 4. Save the final modeling-ready datasets back to DATA_FINAL
+    # Use an imputer to keep full row count safe
+    final_imputer = SimpleImputer(strategy='median')
+
+    # Apply imputer only to the numeric columns, keeping original DataFrames intact for non-numeric columns
+    x_train_final[numeric_cols] = final_imputer.fit_transform(x_train_final[numeric_cols])
+    x_test_final[numeric_cols] = final_imputer.transform(x_test_final[numeric_cols])
+
+    # Update Y-labels to match the cleaned X-frames
+    y_train_final = y_train.loc[x_train_final.index]
+    y_test_final = y_test.loc[x_test_final.index]
+
+    # Save the final modeling-ready datasets back to DATA_FINAL
     DATA_FINAL.mkdir(parents=True, exist_ok=True)
     
     x_train_final.to_csv(DATA_FINAL / "X_train.csv", index=False)

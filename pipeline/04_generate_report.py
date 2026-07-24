@@ -37,10 +37,10 @@ async def generate_pdf_report():
     
     X_train = pd.read_csv(X_train_path)
     X_test = pd.read_csv(X_test_path)
-    y_train = pd.read_csv(y_train_path)
 
     # Calculate summary metrics
-    total_records = len(df)
+    total_records= len(df)
+    total_rows = df.shape[0]
     n_usable = df[TARGET_COL].notna().sum()
     missing_pct_summary = round(df.isnull().mean().mean() * 100, 2)
     duplicate_records = int(df.duplicated().sum())
@@ -142,6 +142,10 @@ async def generate_pdf_report():
                 <div class="metric-label">Fully Duplicated Rows</div>
             </div>
             <div class="metric-box">
+                <div class="metric-value">{{ total_rows }}</div>
+                <div class="metric-label">Total Rows</div>
+            </div>
+            <div class="metric-box">
                 <div class="metric-value">{{ source_counts["CDC PLACES"] + source_counts["USDA FARA"] + source_counts["Census ACS"] + source_counts["Identifiers"] }}</div>
                 <div class="metric-label">Total Columns</div>
             </div>
@@ -191,7 +195,7 @@ async def generate_pdf_report():
         <div style="background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 13px;">
             Pipeline([<br>
             &nbsp;&nbsp;&nbsp;&nbsp;('scaler', StandardScaler()),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('feature_selection', SelectFromModel(Lasso(alpha=0.0055, max_iter=10000))),<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('feature_selection', SelectFromModel(Lasso(alpha=0.0059, max_iter=10000))),<br>
             &nbsp;&nbsp;&nbsp;&nbsp;('pca', PCA(n_components=15, random_state=42)),<br>
             &nbsp;&nbsp;&nbsp;&nbsp;('regressor', LinearRegression())<br>
             ])
@@ -206,6 +210,7 @@ async def generate_pdf_report():
         n_usable=f"{n_usable:,}",
         missing_pct_summary=missing_pct_summary,
         duplicate_records=duplicate_records,
+        total_rows=total_rows,
         missing_bins=missing_bins,
         source_counts=source_counts,
         split_metrics=split_metrics,
