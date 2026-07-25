@@ -13,8 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout repository with LFS data
       uses: actions/checkout@v4
+      with:
+        lfs: true
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -25,8 +27,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        playwright install --with-deps
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run Full Pipeline
       run: |
@@ -37,6 +38,11 @@ jobs:
       with:
         name: capstone-pipeline-outputs
         path: |
-          data/processed/
-          data/final/
-        retention-days: 30
+          data/processed/master_dataset_all_variables.csv
+          data/final/x_test.csv
+          data/final/x_train.csv
+          data/final/y_test.csv
+          data/final/y_train.csv
+          eda_summary_report.html
+          eda_summary_reprot.pdf
+        retention-days: 2 # Keeps storage clear during active development and testing of the pipeline. Adjust as needed for longer retention.
