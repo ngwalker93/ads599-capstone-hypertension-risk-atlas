@@ -16,3 +16,7 @@ scipy>=1.10.0
 
 # SQL 
 sqlalchemy>=2.0.0
+
+# Reporting & PDF Export
+jinja2>=3.0.0
+playwright>=1.40.0

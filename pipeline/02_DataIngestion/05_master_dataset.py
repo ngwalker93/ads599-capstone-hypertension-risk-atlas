@@ -6,7 +6,7 @@ handles missing values, and saves the final merged dataset for downstream tasks.
 
 import pandas as pd
 from functools import reduce
-from paths import DATA_PROCESSED
+from paths import DATA_PROCESSED, DATA_FINAL
 
 def create_master_dataset():
     print("🚀 Starting Master Merge...")
@@ -52,9 +52,11 @@ def create_master_dataset():
     
     # Save the master dataset
     output_path = DATA_PROCESSED / "master_dataset_all_variables.csv"
+    output_path_2 = DATA_FINAL / "master_dataset_all_variables.csv"
     master_df.to_csv(output_path, index=False)
+    master_df.to_csv(output_path_2, index=False)
     
-    print(f"✅ Success! Master dataset saved to {output_path}")
+    print(f"✅ Master dataset saved to both Processed and Final directories.")
     print(f"Final dataset dimensions: {master_df.shape[0]} rows, {master_df.shape[1]} columns")
 
 if __name__ == "__main__":
