@@ -41,11 +41,11 @@ jobs:
       with:
         name: capstone-pipeline-outputs
         path: |
-          data/processed/master_dataset_all_variables.csv
+          data/final/master_dataset_all_variables.csv
           data/final/x_test.csv
           data/final/x_train.csv
           data/final/y_test.csv
           data/final/y_train.csv
-          eda_summary_report.html
-          eda_summary_reprot.pdf
+          data/final/eda_summary_report.html
+          data/final/eda_summary_reprot.pdf
         retention-days: 2 # Keeps storage clear during active development and testing of the pipeline. Adjust as needed for longer retention.
