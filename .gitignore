@@ -2,8 +2,13 @@
 # Capstone Project .gitignore - Nancy & Michelle
 # ==============================================================================
 
-# 1. Ignore all data directories and build outputs
-data/
+# 1. Ignore processed data and final outputs
+data/processed/
+data/final/
+data/validation/
+
+# Allow raw data to be tracked by Git LFS
+!data/raw/
 
 # Exclude bulky raw binary data files
 *.xlsx
