@@ -21,7 +21,7 @@ def run_full_project():
     # Define your sequential master scripts in the correct execution order
     pipeline_stages = [
         "pipeline/02_DataIngestion/07_run_ingestion.py",
-        "pipeline/03_FeatureEngineering/04_run_feature_engineering.py",
+        "pipeline/03_FeatureEngineering/03_run_feature_engineering.py",
         "pipeline/04_generate_report.py"
     ]
     

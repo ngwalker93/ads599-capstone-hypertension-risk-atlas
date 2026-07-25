@@ -10,8 +10,7 @@ from pathlib import Path
 # Define the variable at the global level so all functions can see it
 PIPELINE_STEPS = [
     "pipeline/03_FeatureEngineering/01_feature_engineering.py",
-    "pipeline/03_FeatureEngineering/02_train_test_split.py",
-    "pipeline/03_FeatureEngineering/03_pca_transformation.py"
+    "pipeline/03_FeatureEngineering/02_train_test_split.py"
 ]
 
 # Get the project root directory (the folder above pipeline/DataIngestion)

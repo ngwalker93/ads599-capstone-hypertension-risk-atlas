@@ -34,9 +34,16 @@ async def generate_pdf_report():
     X_train_path = DATA_FINAL / "X_train.csv"
     X_test_path = DATA_FINAL / "X_test.csv"
     y_train_path = DATA_FINAL / "y_train.csv"
+    y_test_path = DATA_FINAL / "y_test.csv"
+    validate_and_alert(X_train_path, "X_train Dataset", "Run the Feature Engineering and Train-Test Split scripts.")
+    validate_and_alert(X_test_path, "X_test Dataset", "Run the Feature Engineering and Train-Test Split scripts.")
+    validate_and_alert(y_train_path, "y_train Dataset", "Run the Feature Engineering and Train-Test Split scripts.")
+    validate_and_alert(y_test_path, "y_test Dataset", "Run the Feature Engineering and Train-Test Split scripts.")
     
     X_train = pd.read_csv(X_train_path)
     X_test = pd.read_csv(X_test_path)
+    y_train = pd.read_csv(y_train_path)
+    y_test = pd.read_csv(y_test_path)
 
     # Calculate summary metrics
     total_records= len(df)
@@ -71,6 +78,12 @@ async def generate_pdf_report():
         "Test Samples": f"{len(X_test):,}",
         "Total Features After Preprocessing": f"{X_train.shape[1]:,}"
     } 
+
+    Dependent_variable = {
+        "Final training target size": f"{y_train.shape[0]}",
+        "Final testing target size": f"{y_test.shape[0]}"
+    }
+ 
 
     # Generate Figure 1: Target Variable Distribution
     fig1, ax1 = plt.subplots(figsize=(8, 4))
@@ -116,15 +129,15 @@ async def generate_pdf_report():
     <head>
         <meta charset="utf-8">
         <style>
-            body { font-family: Helvetica, Arial, sans-serif; margin: 40px; color: #333; line-height: 1.5; }
+            body { font-family: Helvetica, Arial, sans-serif; margin: 30px; color: #333; line-height: 1.4; font-size: 13px; }
             h1 { color: #1a365d; border-bottom: 2px solid #3182ce; padding-bottom: 8px; }
-            h2 { color: #2b6cb0; margin-top: 30px; }
+            h2 { color: #2b6cb0; margin-top: 25px; }
             .metrics-container { display: flex; gap: 20px; margin: 20px 0; }
             .metric-box { background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; text-align: center; flex: 1; }
             .metric-value { font-size: 22px; font-weight: bold; color: #2b6cb0; }
             .metric-label { font-size: 12px; color: #4a5568; text-transform: uppercase; margin-top: 5px; }
-            .chart-section { text-align: center; margin: 30px 0; page-break-inside: avoid; }
-            img { max-width: 85%; height: auto; border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px; background: #fff; }
+            .chart-section { text-align: center; margin: 20px 0; page-break-inside: avoid; }
+            img { max-width: 75%; height: auto; border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px; background: #fff; }
             table { width: 100%; border-collapse: collapse; margin: 20px 0; }
             th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: center; }
             th { background-color: #f7fafc; color: #2b6cb0; }
@@ -153,6 +166,15 @@ async def generate_pdf_report():
 
         <div class="metrics-container">
             {% for key, val in split_metrics.items() %}
+            <div class="metric-box">
+                <div class="metric-value">{{ val }}</div>
+                <div class="metric-label">{{ key }}</div>
+            </div>
+            {% endfor %}
+        </div>
+
+                <div class="metrics-container">
+            {% for key, val in Dependent_variable.items() %}
             <div class="metric-box">
                 <div class="metric-value">{{ val }}</div>
                 <div class="metric-label">{{ key }}</div>
@@ -193,10 +215,21 @@ async def generate_pdf_report():
         <p>To establish a reproducible benchmark, we evaluated a standardized baseline pipeline combining L1 feature selection and dimensionality reduction:</p>
         
         <div style="background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 13px;">
-            Pipeline([<br>
+            # 1. Sub-pipeline for LA-family features<br>
+            la_pca_pipeline = Pipeline([<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('imputer', SimpleImputer(strategy='median')),<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('pca_la', PCA(n_components=2, random_state=42))<br>
+            ])<br><br>
+            # 2. ColumnTransformer to process LA-family and pass others<br>
+            preprocessor = ColumnTransformer([<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('la_pca_transform', la_pca_pipeline, la_family_refined)<br>
+            ], remainder='passthrough')<br><br>
+            # 3. Full End-to-End Modeling Pipeline<br>
+            baseline_pipeline = Pipeline([<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('preprocessor', preprocessor),<br>
             &nbsp;&nbsp;&nbsp;&nbsp;('scaler', StandardScaler()),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('feature_selection', SelectFromModel(Lasso(alpha=0.0059, max_iter=10000))),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('pca', PCA(n_components=15, random_state=42)),<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('feature_selection', SelectFromModel(Lasso(alpha=0.0055, max_iter=10000))),<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;('pca_global', PCA(n_components=15, random_state=42)),<br>
             &nbsp;&nbsp;&nbsp;&nbsp;('regressor', LinearRegression())<br>
             ])
         </div>
@@ -214,6 +247,7 @@ async def generate_pdf_report():
         missing_bins=missing_bins,
         source_counts=source_counts,
         split_metrics=split_metrics,
+        Dependent_variable=Dependent_variable,
         plot1_uri=plot1_uri,
         plot2_uri=plot2_uri,
         plot3_uri=plot3_uri
