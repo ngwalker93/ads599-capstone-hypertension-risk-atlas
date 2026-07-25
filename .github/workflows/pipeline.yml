@@ -29,6 +29,9 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
+    - name: Install Playwright browsers  # <--- Add this step
+      run: playwright install --with-deps
+
     - name: Run Full Pipeline
       run: |
         python main.py
