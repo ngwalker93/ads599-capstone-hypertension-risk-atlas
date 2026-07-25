@@ -9,10 +9,8 @@ data/validation/
 
 # Allow raw data to be tracked by Git LFS
 !data/raw/
-
-# Exclude bulky raw binary data files
-*.xlsx
-*.xls
+!data/raw/**/*.xlsx
+!data/raw/**/*.xls
 
 # 2. R Environment and Temporary History
 # Excludes local workspace files and command history logs
