@@ -2,21 +2,15 @@
 # Capstone Project .gitignore - Nancy & Michelle
 # ==============================================================================
 
-# 1. Project Data Directories 
-# Ignore ONLY large CSV files (if they are too big for GitHub)
-data/**/*.csv
+# 1. Ignore processed data and final outputs
+data/processed/
+data/final/
+data/validation/
 
-# But specifically allow the master, testing, and traing datasets
-!data/processed/master_dataset_all_variables.csv
-!data/final/X_test.csv
-!data/final/X_train.csv
-!data/final/y_test.csv
-!data/final/y_train.csv
-!data/final/eda_summary_report.html
-
-# Exclude bulky raw binary data files
-*.xlsx
-*.xls
+# Allow raw data to be tracked by Git LFS
+!data/raw/
+!data/raw/**/*.xlsx
+!data/raw/**/*.xls
 
 # 2. R Environment and Temporary History
 # Excludes local workspace files and command history logs
