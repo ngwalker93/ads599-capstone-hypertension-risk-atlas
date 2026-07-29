@@ -50,6 +50,10 @@ def create_master_dataset():
     
     print(f"✅ Master dataset has {master_df['fipscode'].nunique()} unique counties.")
     
+    # Ensure directories exist
+    DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
+    DATA_FINAL.mkdir(parents=True, exist_ok=True)
+    
     # Save the master dataset
     output_path = DATA_PROCESSED / "master_dataset_all_variables.csv"
     output_path_2 = DATA_FINAL / "master_dataset_all_variables.csv"
@@ -58,6 +62,10 @@ def create_master_dataset():
     
     print(f"✅ Master dataset saved to both Processed and Final directories.")
     print(f"Final dataset dimensions: {master_df.shape[0]} rows, {master_df.shape[1]} columns")
+
+    print("------------------------------------------------------------------")
+    print("🚀 05_master_dataset.py completed successfully. Moving to next task...")
+    print("------------------------------------------------------------------")
 
 if __name__ == "__main__":
     create_master_dataset()

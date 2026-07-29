@@ -34,5 +34,9 @@ def run_pipeline():
             print(f"❌ Pipeline failed at {script}")
             sys.exit(1)
 
+    print("------------------------------------------------------------------")
+    print("🚀 Feature Engineering completed successfully. Moving to Pipeline Reports...")
+    print("------------------------------------------------------------------")
+
 if __name__ == "__main__":
     run_pipeline()

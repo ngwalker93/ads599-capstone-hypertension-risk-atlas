@@ -38,5 +38,9 @@ def run_pipeline():
             print(f"❌ Pipeline failed at {script}")
             sys.exit(1)
 
+    print("------------------------------------------------------------------")
+    print("🚀 DataIngestion completed successfully. Moving to Feature Engineering")
+    print("------------------------------------------------------------------")
+
 if __name__ == "__main__":
     run_pipeline()

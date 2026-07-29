@@ -52,6 +52,11 @@ def census_clean():
     output_path = DATA_PROCESSED / "census_acs_county_2023.csv"
     df.to_csv(output_path, index=False)
     print(f"✅ Census ACS data saved to {output_path}")
+
+    print("------------------------------------------------------------------")
+    print("🚀 04_process_census_acs.py completed successfully. Moving to next task...")
+    print("------------------------------------------------------------------")
+
     return df
 
 if __name__ == "__main__":

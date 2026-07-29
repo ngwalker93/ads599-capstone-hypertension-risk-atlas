@@ -248,7 +248,7 @@ async def generate_pdf_modeling_report():
     
     importance_uri = fig_to_base64(fig)
 
- # 6. SHAP Analysis
+# 6. SHAP Analysis
     print("Generating SHAP summary chart...")
     shap_uri = None
     try:
@@ -266,23 +266,29 @@ async def generate_pdf_modeling_report():
         if len(vals.shape) == 3:
             vals = vals[:, :, 0]
             
+        # Extract mean absolute SHAP values manually for the top 20 features
         mean_abs_shap = np.mean(np.abs(vals), axis=0)
         
-        # Use raw feature names from X_test_model instead of PC1-15 since we passed raw features to predict!
-        feature_names = list(X_test_model.columns)
-        
-        shap_df = pd.DataFrame({"feature": feature_names, "importance": mean_abs_shap}).sort_values("importance", ascending=True)
-        top_shap = shap_df.tail(15) # Top 15 raw features
-        
-        shap_colors = [VARIABLE_COLORS["individual_explained_variance"]] * len(top_shap)
+        shap_importance_df = pd.DataFrame({
+            "feature": X_test_model.columns,
+            "importance": mean_abs_shap
+        }).sort_values("importance", ascending=True) # Ascending so the largest is at the top in barh
 
-        fig, ax = plt.subplots(figsize=(9, 6), layout="constrained")
+        # Get the top 20 features
+        top_shap = shap_importance_df.tail(20)
+
+        # Map colors to these specific features for consistency with previous plots
+        shap_colors = [variable_color(feature) for feature in top_shap["feature"]]
+
+        # Plot using standard matplotlib barh (matching your permutation plot style)
+        fig, ax = plt.subplots(figsize=(9, 7), layout="constrained")
         ax.barh(top_shap["feature"], top_shap["importance"], color=shap_colors, alpha=0.9)
         ax.set_xlabel("Mean absolute SHAP value")
-        ax.set_title(f"Top SHAP Feature Importance ({best_name})")
+        ax.set_title(f"Top 20 SHAP Features of County Hypertension Prevalence\n({best_name})")
+        
         shap_uri = fig_to_base64(fig)
         plt.close(fig)
-        print("✅ SHAP chart generated successfully!")
+        print("✅ SHAP chart generated successfully with consistent feature coloring!")
     except Exception as e:
         print(f"❌ SKIPPING SHAP DUE TO ERROR: {e}")
         shap_uri = None
