@@ -29,8 +29,26 @@ def run_full_project():
     try:
         for script_path in pipeline_stages:
             print(f"\n--- Executing Stage: {script_path.relative_to(project_root)} ---")
-            result = subprocess.run([sys.executable, str(script_path)], check=True, env=env, capture_output=True, text=True)
-            print(result.stdout)
+            
+            # Stream output in real-time instead of buffering
+            process = subprocess.Popen(
+                [sys.executable, str(script_path)], 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT, 
+                env=env, 
+                text=True, 
+                bufsize=1
+            )
+            
+            for line in process.stdout:
+                print(line, end="")
+                
+            process.wait()
+            
+            if process.returncode != 0:
+                print(f"❌ Pipeline halted in script: {script_path.name}")
+                sys.exit(1)
+                
             print(f"✅ Completed: {script_path.name}")
             
     except subprocess.CalledProcessError as e:

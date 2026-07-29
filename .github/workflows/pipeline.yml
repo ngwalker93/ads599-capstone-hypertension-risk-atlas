@@ -3,10 +3,11 @@ name: Run Capstone Pipeline
 on:
   push:
     branches: 
-      - '**' # Matches any branch name
+      - '**'
   pull_request:
     branches: 
-      - '**' # Matches PRs targeting any branch
+      - '**'
+  workflow_dispatch:
 
 jobs:
   build-pipeline:
@@ -29,7 +30,7 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Install Playwright browsers  # <--- Add this step
+    - name: Install Playwright browsers
       run: playwright install --with-deps
 
     - name: Run Full Pipeline
@@ -47,7 +48,5 @@ jobs:
           data/final/y_test.csv
           data/final/y_train.csv
           data/final/eda_summary_report.html
-          data/final/eda_summary_report.pdf
           data/final/modeling_summary_report.html
-          data/final/modeling_summary_report.pdf
         retention-days: 2

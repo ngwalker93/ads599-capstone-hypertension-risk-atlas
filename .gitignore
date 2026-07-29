@@ -36,6 +36,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .venv/
+env
 
 # We want to ignore the massive library folder
 renv/library/

@@ -7,6 +7,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from jinja2 import Template
+import asyncio
 from playwright.async_api import async_playwright
 from paths import DATA_FINAL, DATA_PROCESSED, validate_and_alert
 from utils import variable_color, fig_to_base64
@@ -136,6 +137,7 @@ async def generate_pdf_report():
     corr_matrix = df[top_features].corr()
     mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
 
+    print("Generating correlation heatmap matrix for top features and target variable.")
     fig3, ax3 = plt.subplots(figsize=(9, 7))
     sns.heatmap(corr_matrix, mask=mask, annot=True, fmt=".2f",
                 annot_kws={"size": 7},
@@ -258,6 +260,8 @@ async def generate_pdf_report():
         plot2_uri=plot2_uri,
         plot3_uri=plot3_uri
     )
+
+    print("Rendering HTML and generating PDF report...")
     
     # Compile directly to PDF via Headless Chromium & Save Files
     output_pdf = DATA_FINAL / "eda_summary_report.pdf"
@@ -265,13 +269,22 @@ async def generate_pdf_report():
     os.makedirs(DATA_FINAL, exist_ok=True)
     
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        )
         page = await browser.new_page()
         await page.set_content(rendered_html)
         await page.pdf(path=str(output_pdf), format="Letter", print_background=True)
         await browser.close()
 
     # Save HTML copy for GitHub viewing
+    print("Writing HTML copy")
     with open(output_html, "w", encoding="utf-8") as f:
         f.write(rendered_html)
 
@@ -283,15 +296,20 @@ async def generate_pdf_report():
     print(f"🌐 HTML Report: {html_uri}")
 
 if __name__ == "__main__":
+    import nest_asyncio
+    nest_asyncio.apply()
+    
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
 
-    if loop and loop.is_running():
-        # Inside Jupyter: schedule it as a task and let the notebook event loop run it
-        print("📄 PDF generation scheduled in the active event loop...")
-        asyncio.create_task(generate_pdf_report())
-    else:
-        # Inside standard terminal: block and run synchronously
+    try:
         asyncio.run(generate_pdf_report())
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            future = asyncio.ensure_future(generate_pdf_report())
+            loop.run_until_complete(future)
+        else:
+            asyncio.run(generate_pdf_report())

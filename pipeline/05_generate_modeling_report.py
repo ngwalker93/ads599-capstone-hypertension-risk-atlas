@@ -406,7 +406,15 @@ async def generate_pdf_modeling_report():
 
     print("Launching Playwright to render PDF report...")
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        )
         page = await browser.new_page()
         await page.set_content(rendered_html, wait_until="networkidle")
         print("Rendering PDF page...")
@@ -421,8 +429,15 @@ async def generate_pdf_modeling_report():
 if __name__ == "__main__":
     try:
         loop = asyncio.get_running_loop()
-        if loop.is_running():
-            print("📄 Modeling PDF generation scheduled in active event loop...")
-            loop.create_task(generate_pdf_modeling_report())
     except RuntimeError:
+        loop = None
+
+    try:
         asyncio.run(generate_pdf_modeling_report())
+    except RuntimeError:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            future = asyncio.ensure_future(generate_pdf_modeling_report())
+            loop.run_until_complete(future)
+        else:
+            asyncio.run(generate_pdf_modeling_report())
