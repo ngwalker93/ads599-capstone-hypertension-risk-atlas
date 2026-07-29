@@ -1,5 +1,3 @@
-import io
-import base64
 import os
 import asyncio
 import numpy as np
@@ -11,15 +9,7 @@ import seaborn as sns
 from jinja2 import Template
 from playwright.async_api import async_playwright
 from paths import DATA_FINAL, DATA_PROCESSED, validate_and_alert
-
-def fig_to_base64(fig):
-    """Utility to convert a Matplotlib figure to a base64 string for HTML embedding."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight", dpi=300)
-    buf.seek(0)
-    img_str = base64.b64encode(buf.read()).decode("utf-8")
-    plt.close(fig)
-    return f"data:image/png;base64,{img_str}"
+from utils import variable_color, fig_to_base64
 
 async def generate_pdf_report():
     # Load data
@@ -46,7 +36,7 @@ async def generate_pdf_report():
     y_test = pd.read_csv(y_test_path)
 
     # Calculate summary metrics
-    total_records= len(df)
+    total_records = len(df)
     total_rows = df.shape[0]
     n_usable = df[TARGET_COL].notna().sum()
     missing_pct_summary = round(df.isnull().mean().mean() * 100, 2)
@@ -83,7 +73,6 @@ async def generate_pdf_report():
         "Final training target size": f"{y_train.shape[0]}",
         "Final testing target size": f"{y_test.shape[0]}"
     }
- 
 
     # Generate Figure 1: Target Variable Distribution
     fig1, ax1 = plt.subplots(figsize=(8, 4))
@@ -94,29 +83,63 @@ async def generate_pdf_report():
     plt.tight_layout()
     plot1_uri = fig_to_base64(fig1)
 
-    # Generate Figure 2: Top 20 Correlations Bar Chart
+    # Generate Figure 2: Key Predictor Distributions (2x2 Grid)
+    vehicle_access_rate = df["TractHUNV"] / df["OHU2010"]
+    food_desert_density = df["LILATracts_1And10"] / df["Pop2010"] * 100_000
+
+    fig_grid, axes = plt.subplots(2, 2, figsize=(10, 7))
+    sns.histplot(vehicle_access_rate.dropna(), bins=40, kde=True,
+                 color=variable_color("vehicle_access_rate"),
+                 edgecolor="white", ax=axes[0, 0])
+    axes[0, 0].set_title("Vehicle Access Rate")
+
+    sns.histplot(food_desert_density.dropna(), bins=40, kde=True,
+                 color=variable_color("food_desert_density"),
+                 edgecolor="white", ax=axes[0, 1])
+    axes[0, 1].set_title("Food-Desert Density (per 100k)")
+
+    sns.histplot(df["PovertyRate"].dropna(), bins=40, kde=True,
+                 color=variable_color("PovertyRate"),
+                 edgecolor="white", ax=axes[1, 0])
+    axes[1, 0].set_title("Poverty Rate")
+
+    sns.histplot(df["median_income"] / 1_000, bins=40, kde=True,
+                 color=variable_color("median_income"),
+                 edgecolor="white", ax=axes[1, 1])
+    axes[1, 1].set_title("Median Household Income (thousands of USD)")
+    axes[1, 1].set_xlabel("median_income ($1,000s)")
+
+    plt.tight_layout()
+    plot_grid_uri = fig_to_base64(fig_grid)
+
+    # Generate Figure 3: Top 20 Correlations Bar Chart
     corr = df.select_dtypes("number").corrwith(df[TARGET_COL]).drop(TARGET_COL).dropna()
     top_20 = corr.reindex(corr.abs().sort_values(ascending=False).index).head(20)
+    top_20_sorted = top_20.sort_values()
+
+    bar_colors = [variable_color(feature) for feature in top_20_sorted.index]
 
     fig2, ax2 = plt.subplots(figsize=(8, 6))
-    top_20.sort_values().plot.barh(ax=ax2, color="#2b6cb0")
+    top_20_sorted.plot.barh(ax=ax2, color=bar_colors)
     ax2.set_xlabel(f"Correlation with {TARGET_COL}")
-    ax2.set_title("Top 20 Correlated Features")
+    ax2.set_title(f"Top-20 Predictors (Correlated with {TARGET_COL})")
     plt.tight_layout()
+    
     plot2_uri = fig_to_base64(fig2)
 
+    # Check for potential data leakage
     leaks = top_20[top_20.abs() > 0.95]
     print("No leakage flags (|r| > 0.95)." if leaks.empty else leaks)
 
-    # Generate Figure 3: Correlation Heatmap Matrix
-    top_features = list(corr.head(10).index) + list(corr.tail(10).index)
+    # Generate Figure 4: Correlation Heatmap Matrix
+    top_features = list(corr.head(10).index) + list(corr.tail(10).index) + [TARGET_COL]
     corr_matrix = df[top_features].corr()
     mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
 
     fig3, ax3 = plt.subplots(figsize=(9, 7))
     sns.heatmap(corr_matrix, mask=mask, annot=True, fmt=".2f",
                 annot_kws={"size": 7},
-                cmap="coolwarm", vmin=-1, vmax=1, center=0, square=True, ax=ax3)
+                cmap="PuOr_r", vmin=-1, vmax=1, center=0, square=True, ax=ax3)
     ax3.set_xticklabels(ax3.get_xticklabels(), rotation=45, ha="right")
     ax3.set_title("Feature Correlation Heatmap Matrix")
     plt.tight_layout()
@@ -173,7 +196,7 @@ async def generate_pdf_report():
             {% endfor %}
         </div>
 
-                <div class="metrics-container">
+        <div class="metrics-container">
             {% for key, val in Dependent_variable.items() %}
             <div class="metric-box">
                 <div class="metric-value">{{ val }}</div>
@@ -201,6 +224,11 @@ async def generate_pdf_report():
             <img src="{{ plot1_uri }}" alt="Target Distribution">
         </div>
 
+        <h2>Key Predictor Distributions</h2>
+        <div class="chart-section">
+            <img src="{{ plot_grid_uri }}" alt="Key Predictor Distributions">
+        </div>
+
         <h2>Top 20 Correlated Predictors</h2>
         <div class="chart-section">
             <img src="{{ plot2_uri }}" alt="Top 20 Correlations">
@@ -209,29 +237,6 @@ async def generate_pdf_report():
         <h2>Feature Correlation Heatmap</h2>
         <div class="chart-section">
             <img src="{{ plot3_uri }}" alt="Correlation Heatmap">
-        </div>
-
-        <h2>Baseline Modeling Pipeline</h2>
-        <p>To establish a reproducible benchmark, we evaluated a standardized baseline pipeline combining L1 feature selection and dimensionality reduction:</p>
-        
-        <div style="background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 13px;">
-            # 1. Sub-pipeline for LA-family features<br>
-            la_pca_pipeline = Pipeline([<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('imputer', SimpleImputer(strategy='median')),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('pca_la', PCA(n_components=2, random_state=42))<br>
-            ])<br><br>
-            # 2. ColumnTransformer to process LA-family and pass others<br>
-            preprocessor = ColumnTransformer([<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('la_pca_transform', la_pca_pipeline, la_family_refined)<br>
-            ], remainder='passthrough')<br><br>
-            # 3. Full End-to-End Modeling Pipeline<br>
-            baseline_pipeline = Pipeline([<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('preprocessor', preprocessor),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('scaler', StandardScaler()),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('feature_selection', SelectFromModel(Lasso(alpha=0.0055, max_iter=10000))),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('pca_global', PCA(n_components=15, random_state=42)),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;('regressor', LinearRegression())<br>
-            ])
         </div>
     </body>
     </html>
@@ -249,6 +254,7 @@ async def generate_pdf_report():
         split_metrics=split_metrics,
         Dependent_variable=Dependent_variable,
         plot1_uri=plot1_uri,
+        plot_grid_uri=plot_grid_uri,
         plot2_uri=plot2_uri,
         plot3_uri=plot3_uri
     )
@@ -283,7 +289,9 @@ if __name__ == "__main__":
         loop = None
 
     if loop and loop.is_running():
+        # Inside Jupyter: schedule it as a task and let the notebook event loop run it
+        print("📄 PDF generation scheduled in the active event loop...")
         asyncio.create_task(generate_pdf_report())
-        print("📄 PDF generation scheduled in the active event loop.")
     else:
+        # Inside standard terminal: block and run synchronously
         asyncio.run(generate_pdf_report())

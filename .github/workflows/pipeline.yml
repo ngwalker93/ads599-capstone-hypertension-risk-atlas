@@ -47,5 +47,8 @@ jobs:
           data/final/y_test.csv
           data/final/y_train.csv
           data/final/eda_summary_report.html
-          data/final/eda_summary_reprot.pdf
+          data/final/eda_summary_report.pdf
+          data/final/modeling_summary_report.html
+          data/final/modeling_summary_report.pdf
+        retention-days: 2
         retention-days: 2 # Keeps storage clear during active development and testing of the pipeline. Adjust as needed for longer retention.

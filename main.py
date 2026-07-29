@@ -22,7 +22,8 @@ def run_full_project():
     pipeline_stages = [
         "pipeline/02_DataIngestion/07_run_ingestion.py",
         "pipeline/03_FeatureEngineering/03_run_feature_engineering.py",
-        "pipeline/04_generate_report.py"
+        "pipeline/04_generate_eda_report.py",
+        "pipeline/05_generate_modeling_report.py"
     ]
     
     try:
