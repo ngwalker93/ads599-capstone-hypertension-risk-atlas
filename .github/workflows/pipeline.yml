@@ -51,4 +51,3 @@ jobs:
           data/final/modeling_summary_report.html
           data/final/modeling_summary_report.pdf
         retention-days: 2
-        retention-days: 2 # Keeps storage clear during active development and testing of the pipeline. Adjust as needed for longer retention.
