@@ -18,12 +18,12 @@ def run_full_project():
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
     
-    # Define your sequential master scripts in the correct execution order
+    # Define your sequential master scripts in the correct execution order using Path objects
     pipeline_stages = [
-        "pipeline/02_DataIngestion/07_run_ingestion.py",
-        "pipeline/03_FeatureEngineering/03_run_feature_engineering.py",
-        "pipeline/04_generate_eda_report.py",
-        "pipeline/05_generate_modeling_report.py"
+        project_root / "pipeline" / "02_DataIngestion" / "07_run_ingestion.py",
+        project_root / "pipeline" / "03_FeatureEngineering" / "03_run_feature_engineering.py",
+        project_root / "pipeline" / "04_generate_eda_report.py",
+        project_root / "pipeline" / "05_generate_modeling_report.py"
     ]
     
     try:
