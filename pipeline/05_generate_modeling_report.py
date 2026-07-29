@@ -248,33 +248,43 @@ async def generate_pdf_modeling_report():
     
     importance_uri = fig_to_base64(fig)
 
-# 6. SHAP Analysis (If applicable/computed)
+ # 6. SHAP Analysis
     print("Generating SHAP summary chart...")
+    shap_uri = None
     try:
-        # Transform data up to PCA (so it matches what the regressor actually trains on)
-        X_test_transformed = X_test_model
-        for name, step in best_model.named_steps.items():
-            if name != "regressor":
-                X_test_transformed = step.transform(X_test_transformed)
+        # Define a background dataset for the SHAP explainer
+        background_data = X_train_model.sample(n=min(100, len(X_train_model)), random_state=RANDOM_STAT)
+
+        # Initialize SHAP Explainer using the full pipeline's predict method
+        explainer = shap.Explainer(best_model.predict, background_data)
+
+        # Calculate SHAP values for the test set
+        shap_values = explainer(X_test_model)
+
+        # Handle SHAP values shape safely
+        vals = shap_values.values if hasattr(shap_values, "values") else shap_values
+        if len(vals.shape) == 3:
+            vals = vals[:, :, 0]
+            
+        mean_abs_shap = np.mean(np.abs(vals), axis=0)
         
-        explainer = shap.Explainer(best_model.named_steps["regressor"], X_test_transformed)
-        shap_values = explainer(X_test_transformed)
-        mean_abs_shap = np.mean(np.abs(shap_values.values), axis=0) if hasattr(shap_values, "values") else np.mean(np.abs(shap_values), axis=0)
+        # Use raw feature names from X_test_model instead of PC1-15 since we passed raw features to predict!
+        feature_names = list(X_test_model.columns)
         
-        # Match dimensions to the 15 PCA components
-        pca_feature_names = [f"PC{i}" for i in range(1, len(mean_abs_shap) + 1)]
+        shap_df = pd.DataFrame({"feature": feature_names, "importance": mean_abs_shap}).sort_values("importance", ascending=True)
+        top_shap = shap_df.tail(15) # Top 15 raw features
         
-        shap_df = pd.DataFrame({"feature": pca_feature_names, "importance": mean_abs_shap}).sort_values("importance", ascending=True)
-        shap_colors = [VARIABLE_COLORS["individual_explained_variance"]] * len(shap_df)
+        shap_colors = [VARIABLE_COLORS["individual_explained_variance"]] * len(top_shap)
 
         fig, ax = plt.subplots(figsize=(9, 6), layout="constrained")
-        ax.barh(shap_df["feature"], shap_df["importance"], color=shap_colors, alpha=0.9)
+        ax.barh(top_shap["feature"], top_shap["importance"], color=shap_colors, alpha=0.9)
         ax.set_xlabel("Mean absolute SHAP value")
-        ax.set_title(f"Top SHAP Principal Components ({best_name})")
+        ax.set_title(f"Top SHAP Feature Importance ({best_name})")
         shap_uri = fig_to_base64(fig)
         plt.close(fig)
+        print("✅ SHAP chart generated successfully!")
     except Exception as e:
-        print(f"Skipping SHAP visual generation due to estimator compatibility: {e}")
+        print(f"❌ SKIPPING SHAP DUE TO ERROR: {e}")
         shap_uri = None
 
     # HTML Template Construction
@@ -392,7 +402,7 @@ async def generate_pdf_modeling_report():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        await page.set_content(rendered_html)
+        await page.set_content(rendered_html, wait_until="networkidle")
         print("Rendering PDF page...")
         await page.pdf(path=str(output_pdf), format="Letter", print_background=True)
         await browser.close()

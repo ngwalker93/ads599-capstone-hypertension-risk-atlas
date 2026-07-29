@@ -27,13 +27,16 @@ def run_full_project():
     ]
     
     try:
-        for script in pipeline_stages:
-            print(f"\n--- Executing Stage: {script} ---")
-            subprocess.run([sys.executable, script], check=True, env=env)
-            print(f"✅ Completed: {script}")
+        for script_path in pipeline_stages:
+            print(f"\n--- Executing Stage: {script_path.relative_to(project_root)} ---")
+            result = subprocess.run([sys.executable, str(script_path)], check=True, env=env, capture_output=True, text=True)
+            print(result.stdout)
+            print(f"✅ Completed: {script_path.name}")
             
     except subprocess.CalledProcessError as e:
-        print(f"❌ Pipeline halted due to error in script: {e}")
+        print(f"❌ Pipeline halted in script: {script_path.name}")
+        print(f"--- STDOUT ---\n{e.stdout}")
+        print(f"--- STDERR ---\n{e.stderr}")
         sys.exit(1)
     
     print("\n✅ Full Project Complete!")
