@@ -4,6 +4,8 @@ numpy>=1.24.0
 openpyxl==3.1.5
 
 # Visualization
+streamlit>=1.30.0
+streamlit-option-menu>=0.3.6
 plotly>=6.8.0
 nbformat>=5.10.0
 matplotlib>=3.7.0

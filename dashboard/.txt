@@ -1,0 +1,55 @@
+hypertension_atlas/
+│
+├── app.py                 # Main entry point (navigation, sidebar, data loading)
+├── hypertension_atlas.db  # SQLite database
+├── paths.py               # Path definitions
+├── utils.py               # Shared helpers (colors, base64 converters)
+│
+└── views/                 # Folder for your individual tab files
+    ├── __init__.py        # Empty file to make 'views' a package
+    ├── tab1_overview.py   # Overview & Map tab
+    ├── tab2_explorer.py   # Data exploration tab
+    ├── tab3_benchmark.py  # CHRR benchmark tab
+    └── tab4_modeling.py   # Machine learning & What-if simulator tab
+
+import sqlite3
+import streamlit as st
+from views.tab4_modeling import render_tab4  # Import your tab view
+
+st.set_page_config(
+    page_title="Hypertension Atlas", layout="wide", page_icon="🩺"
+)
+
+
+@st.cache_data
+def load_all_data():
+  conn = sqlite3.connect("hypertension_atlas.db")
+  df_master = pd.read_sql_query("SELECT * FROM master_dataset", conn)
+  df_chrr = pd.read_sql_query("SELECT * FROM chrr_data", conn)
+  X_train = pd.read_sql_query("SELECT * FROM x_train", conn)
+  X_test = pd.read_sql_query("SELECT * FROM x_test", conn)
+  y_train = pd.read_sql_query("SELECT * FROM y_train", conn)
+  y_test = pd.read_sql_query("SELECT * FROM y_test", conn)
+  conn.close()
+  return df_master, df_chrr, X_train, X_test, y_train, y_test
+
+
+# Load data globally
+df, df_chrr, X_train, X_test, y_train, y_test = load_all_data()
+
+# Create App Navigation Tabs
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["Overview & Map", "Data Explorer", "CHRR Benchmark", "Model Performance"]
+)
+
+with tab1:
+  st.write("Overview content...")
+
+with tab2:
+  st.write("Data explorer content...")
+
+with tab3:
+  st.write("CHRR benchmark content...")
+
+with tab4:
+  render_tab4(X_train, X_test, y_train, y_test)

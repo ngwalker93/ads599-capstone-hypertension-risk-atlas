@@ -9,6 +9,7 @@ ensuring that the model's performance is evaluated on unseen data.
 from sklearn.model_selection import train_test_split
 from paths import DATA_PROCESSED, DATA_FINAL, validate_and_alert
 import pandas as pd
+import sqlite3
 
 def train_test_split_engineered_features():
     # Load the engineered features dataset
@@ -34,6 +35,17 @@ def train_test_split_engineered_features():
     pd.DataFrame(x_test).to_csv(DATA_FINAL / "x_test.csv", index=False)
     pd.Series(y_train).to_csv(DATA_FINAL / "y_train.csv", index=False)
     pd.Series(y_test).to_csv(DATA_FINAL / "y_test.csv", index=False)
+
+    # Save/Update the train-test split in the SQLite database
+    conn = sqlite3.connect("hypertension_atlas.db")
+    pd.DataFrame(x_train).to_sql("x_train", conn, if_exists="replace", index=False)
+    pd.DataFrame(x_test).to_sql("x_test", conn, if_exists="replace", index=False)
+    pd.DataFrame(y_train).to_sql("y_train", conn, if_exists="replace", index=False)
+    pd.DataFrame(y_test).to_sql("y_test", conn, if_exists="replace", index=False)
+    conn.close()
+
+    print(f"✅ Separate train/test features and targets saved to SQLite database!")
+
     
     print(f"✅ Train-test splits saved successfully to {DATA_FINAL}")
 
