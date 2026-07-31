@@ -1,6 +1,8 @@
 import json
 from urllib.request import urlopen
 import matplotlib
+import base64
+from pathlib import Path
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -26,9 +28,76 @@ st.set_page_config(page_title="ADS 599 Capstone Project", layout="wide")
 
 st.title("💓 Hypertension Risk Atlas 🗺️")
 st.write(
-    "This is a web application that provides insights into hypertension risk factors and their prevalence across different regions."
+   "This is a web application that provides insights into hypertension risk factors and their prevalence across different regions."
 )
 
+# Set background image for the Streamlit app
+def set_bg_image(png_file):
+    # Anchor the path relative to this app.py file's actual directory
+    image_path = Path(__file__).parent / png_file
+
+    with open(image_path, "rb") as f:
+        encoded_string = base64.b64encode(f.read()).decode()
+
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url(data:image/png;base64,{encoded_string});
+            background-size: cover;
+            background-position: center;
+            background-repeat: repeat;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+set_bg_image("background.png")
+
+NAVY_COLOR = "#191970" 
+
+def set_text_color_and_bg():
+    st.markdown(
+        f"""
+        <style>
+        /* Force all text elements to be navy using !important */
+        .stApp, h1, h2, h3, h4, h5, h6, p, span, label, div, ul, ol, li, 
+        [data-testid="stMarkdownContainer"], 
+        [data-testid="stMetricLabel"], 
+        [data-testid="stMetricValue"] {{
+            color: {NAVY_COLOR} !important;
+        }}
+
+        /* Ensure interactive widget text is also navy */
+        input, select, textarea, button {{
+            color: {NAVY_COLOR} !important;
+        }}
+
+        /* --- Style Streamlit Tabs --- */
+        /* Unselected tab styling */
+        [data-baseweb="tab"] {{
+            background-color: rgba(245, 235, 220, 0.7) !important;
+            border-radius: 4px 4px 0px 0px !important;
+        }}
+        
+        /* Tab text color */
+        [data-baseweb="tab"] div {{
+            color: {NAVY_COLOR} !important;
+            font-weight: 600 !important;
+        }}
+
+        /* Selected active tab styling */
+        [data-baseweb="tab"][aria-selected="true"] {{
+            background-color: rgba(255, 253, 245, 0.95) !important;
+            border-bottom-color: {NAVY_COLOR} !important;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+set_text_color_and_bg()
 
 # --- Connect to SQLite database and load datasets ---
 @st.cache_data
@@ -62,7 +131,7 @@ try:
     df, df_chrr, X_train, X_test, y_train, y_test = load_data_from_sqlite()
     county_geojson = load_geojson()
 
-    # Clean mixed data types to prevent PyArrow crashes
+    #Clean mixed data types to prevent PyArrow crashes
     for col in df.select_dtypes(include=["object"]).columns:
         df[col] = df[col].astype(str)
 
@@ -81,7 +150,6 @@ except Exception as e:
     df_chrr = pd.DataFrame()
     X_train = X_test = y_train = y_test = pd.DataFrame()
     county_geojson = {}
-
 
 # --- Create 4-level tabs for navigation ---
 tab1, tab2, tab3, tab4 = st.tabs(
