@@ -1,0 +1,9 @@
+[theme]
+base = "light"
+
+primaryColor = "#191970"
+backgroundColor = "#f6c3bdff"
+secondaryBackgroundColor = "#f6c3bdff"
+textColor = "#191970"
+linkColor = "#f6c3bdff"
+dataframeHeaderBackgroundColor = "#f6c3bdff"

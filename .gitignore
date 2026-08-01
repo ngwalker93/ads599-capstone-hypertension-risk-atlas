@@ -6,6 +6,8 @@
 data/processed/
 data/final/
 data/validation/
+models/
+hypertension_atlas.db
 
 # Allow raw data to be tracked by Git LFS
 !data/raw/
@@ -34,6 +36,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .venv/
+env
 
 # We want to ignore the massive library folder
 renv/library/

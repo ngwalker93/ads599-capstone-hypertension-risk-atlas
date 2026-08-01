@@ -16,16 +16,6 @@ usda_instructions = """
 5. Re-run this Python pipeline.
 """
 
-def load_data():
-    """Handles raw data ingestion using centralized paths."""
-    file_path = DATA_RAW / "FoodAccessResearchAtlasData2019.xlsx"
-    
-    if not file_path.exists():
-        raise FileNotFoundError(f"The file {file_path} was not found!")
-    
-    print(f"🚀 Loading USDA data from: {file_path}")
-    return pd.read_excel(file_path, sheet_name='Food Access Research Atlas', dtype={'CensusTract': str})
-
 def handle_missing_values(df):
     """Encapsulates all your missingness/structural cleaning rules."""
     # Drop columns depending on their missingness
@@ -150,7 +140,7 @@ def process_usda():
     # Hash Verification
     print(f"🔍 Data Fingerprint: {get_file_hash(raw_path)}")
     
-    # Processing (We now know the file exists)
+    # Processing
     try:
         print(f"🚀 Loading USDA data from: {raw_path}")
         df = pd.read_excel(raw_path, sheet_name='Food Access Research Atlas', dtype={'CensusTract': str})
@@ -174,6 +164,10 @@ def process_usda():
     except Exception as e:
         print(f"❌ Pipeline failed: {e}")
         raise
+
+    print("------------------------------------------------------------------")
+    print("🚀 02_process_usda.py completed successfully. Moving to next task...")
+    print("------------------------------------------------------------------")
 
 if __name__ == "__main__":
     process_usda()

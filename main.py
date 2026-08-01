@@ -18,21 +18,43 @@ def run_full_project():
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root)
     
-    # Define your sequential master scripts in the correct execution order
+    # Define your sequential master scripts in the correct execution order using Path objects
     pipeline_stages = [
-        "pipeline/02_DataIngestion/07_run_ingestion.py",
-        "pipeline/03_FeatureEngineering/03_run_feature_engineering.py",
-        "pipeline/04_generate_report.py"
+        project_root / "pipeline" / "02_DataIngestion" / "07_run_ingestion.py",
+        project_root / "pipeline" / "03_FeatureEngineering" / "03_run_feature_engineering.py",
+        project_root / "pipeline" / "04_generate_eda_report.py",
+        project_root / "pipeline" / "05_generate_modeling_report.py"
     ]
     
     try:
-        for script in pipeline_stages:
-            print(f"\n--- Executing Stage: {script} ---")
-            subprocess.run([sys.executable, script], check=True, env=env)
-            print(f"✅ Completed: {script}")
+        for script_path in pipeline_stages:
+            print(f"\n--- Executing Stage: {script_path.relative_to(project_root)} ---")
+            
+            # Stream output in real-time instead of buffering
+            process = subprocess.Popen(
+                [sys.executable, str(script_path)], 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT, 
+                env=env, 
+                text=True, 
+                bufsize=1
+            )
+            
+            for line in process.stdout:
+                print(line, end="")
+                
+            process.wait()
+            
+            if process.returncode != 0:
+                print(f"❌ Pipeline halted in script: {script_path.name}")
+                sys.exit(1)
+                
+            print(f"✅ Completed: {script_path.name}")
             
     except subprocess.CalledProcessError as e:
-        print(f"❌ Pipeline halted due to error in script: {e}")
+        print(f"❌ Pipeline halted in script: {script_path.name}")
+        print(f"--- STDOUT ---\n{e.stdout}")
+        print(f"--- STDERR ---\n{e.stderr}")
         sys.exit(1)
     
     print("\n✅ Full Project Complete!")

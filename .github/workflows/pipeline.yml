@@ -2,11 +2,23 @@ name: Run Capstone Pipeline
 
 on:
   push:
-    branches: 
-      - '**' # Matches any branch name
+    branches: [ main ]
+    paths:
+      - 'pipeline/**'
+      - 'main.py'
+      - 'requirements.txt'
+      - '.github/workflows/**'
   pull_request:
-    branches: 
-      - '**' # Matches PRs targeting any branch
+    paths:
+      - 'pipeline/**'
+      - 'main.py'
+      - 'requirements.txt'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-pipeline:
@@ -29,8 +41,10 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    - name: Install Playwright browsers  # <--- Add this step
-      run: playwright install --with-deps
+    - name: Install Playwright Browsers
+      run: |
+        playwright install
+        playwright install-deps
 
     - name: Run Full Pipeline
       run: |
@@ -47,5 +61,5 @@ jobs:
           data/final/y_test.csv
           data/final/y_train.csv
           data/final/eda_summary_report.html
-          data/final/eda_summary_reprot.pdf
-        retention-days: 2 # Keeps storage clear during active development and testing of the pipeline. Adjust as needed for longer retention.
+          data/final/modeling_summary_report.html
+        retention-days: 2

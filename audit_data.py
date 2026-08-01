@@ -1,3 +1,13 @@
+"""
+Memory Efficient (nrows=0): By reading only the headers (nrows=0), 
+inspect dozens of massive CSV files in milliseconds without 
+loading gigabytes of data into memory.
+
+Wildcard Globbing (DATA_PROCESSED.glob("*.csv")): 
+Automatically sweeps through the processed directory to inspect every 
+output table.
+"""
+
 import pandas as pd
 from paths import DATA_PROCESSED
 
