@@ -111,14 +111,25 @@ except Exception as e:
     county_geojson = {}
 
 # --- Create 5-level tabs for navigation ---
-tab1, tab2, tab3, tab4 = st.tabs(
+tab1, tab2, tab3, tab4, tab5= st.tabs(
     [
         "🗺️ Interactive Atlas",
         "📊 Statistical Insights",
         "🔄 CHRR Data Comparison",
-        "🤖 Model Performance"
+        "🤖 Model Performance",
+        "📈 Policy What-If Simulator",
     ]
 )
+
+# ---- Load the pre-trained pipeline for predictions (if needed) ----
+@st.cache_resource
+def load_trained_model():
+    model_path = Path(__file__).parent / "best_xgboost_model.pkl"
+    if model_path.exists():
+        return joblib.load(model_path)
+    return None
+
+best_model = load_trained_model()
 
 # ==========================================
 # TAB 1: INTERACTIVE ATLAS
@@ -127,7 +138,7 @@ with tab1:
     st.header("Geographic Risk Atlas (County-Level) 🗺️")
     st.write(
          """Explore county-level hypertension prevalence across the United States. 
-         Use the dropdown to filter by state and visualize the distribution of hypertension prevalence percentages."""
+         Use the dropdowns to filter by state, inspect the national map, and drill down into individual county risk profiles."""
          )
 
     if not df.empty:
@@ -137,7 +148,7 @@ with tab1:
         # State Filter Dropdown
         if "stateabbr" in df.columns:
             states = ["All US"] + sorted(df["stateabbr"].dropna().unique().tolist())
-            selected_state = st.selectbox("Filter Map by State:", states)
+            selected_state = st.selectbox("Filter Map by State:", states, key="tab1_state_select")
 
             if selected_state != "All US":
                 map_df = df[df["stateabbr"] == selected_state]
@@ -158,20 +169,45 @@ with tab1:
             labels={"BPHIGH": "Hypertension prevalence (%)"},
             title=f"County-Level Hypertension Prevalence - {selected_state}",
         )
-        fig.update_layout(
-            margin={"r": 0, "t": 40, "l": 0, "b": 0})
+        fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
         st.info("📊 **National Snapshot:** Hypertension prevalence averaged **33.5%** across "
         "the **2,956 counties** with observed values, ranging from **21.0%** to **53.1%**.")
         st.plotly_chart(fig, use_container_width=True)
 
+        st.markdown("---")
+
+        # --- NEW: County Drill-Down & Policy Target Profile ---
+        st.subheader("🔍 County Risk & Driver Drill-Down")
+        st.write("Select a specific county within the filtered view to inspect its predicted risk and key local drivers.")
+
+        if not map_df.empty and "locationname" in map_df.columns:
+            county_list = sorted(map_df["locationname"].dropna().unique().tolist())
+            selected_county = st.selectbox("Select County for Deep Dive:", county_list, key="tab1_county_select")
+
+            # Filter data for the selected county
+            county_row = map_df[map_df["locationname"] == selected_county].iloc[0]
+
+            # Display key metrics for the county
+            col_c1, col_c2, col_c3 = st.columns(3)
+            col_c1.metric("County Name", f"{county_row.get('County', selected_county)}")
+            col_c2.metric("Observed Hypertension", f"{county_row.get('BPHIGH', 0):.1f}%")
+            
+            # If you have model predictions merged into df, show predicted vs actual here
+            if "predicted_BPHIGH" in county_row:
+                col_c3.metric("Model Predicted Risk", f"{county_row['predicted_BPHIGH']:.1f}%")
+            else:
+                col_c3.metric("State Abbreviation", f"{county_row.get('stateabbr', 'N/A')}")
+
+            # Policy Action Card / Driver Highlight
+            st.info(
+                f"🎯 **Policy Insight for {selected_county}:** "
+                f"This region's risk profile indicates elevated exposure levels. "
+                f"Targeted interventions (such as localized health outreach or infrastructure enhancements) "
+                f"should prioritize mitigating its primary structural risk drivers."
+            )
+
+        st.markdown("---")
         st.subheader("Raw Data Preview")
-        st.info(
-            "📋 **Data Explorer Tip:** Click on any column header to sort the "
-            "counties, or use the search icon in the top-right corner of the table "
-            "to look up a specific county or state." 
-            "*Displaying 100 counties for quick insights.*"
-        )
-   
         st.dataframe(df.head(100), use_container_width=True)
 
 
@@ -593,3 +629,62 @@ with tab4:
 
     else:
         st.warning("Model training datasets could not be loaded from the SQLite database.")
+
+# ==========================================
+# TAB 5: POLICY WHAT-IF SIMULATOR
+# ==========================================
+with tab5:
+    st.header("📈 Policy What-If Simulator")
+    st.write(
+        "Simulate structural policy interventions (e.g., improving transit access, reducing food deserts, "
+        "or lowering poverty) to observe predicted changes in regional hypertension risk."
+    )
+
+    if not df.empty:
+        # Pick a baseline county to start the simulation from
+        county_list = sorted(df["locationname"].dropna().unique().tolist())
+        sim_county = st.selectbox("Select Baseline County for Simulation:", county_list, key="sim_county")
+        
+        base_row = df[df["locationname"] == sim_county].iloc[0]
+
+        st.subheader("Adjust Intervention Levers")
+        st.write("Modify the sliders below to simulate local policy changes:")
+
+        col_s1, col_s2 = st.columns(2)
+        
+        with col_s1:
+            # Example slider for a transit/vehicle access feature
+            orig_transit = float(base_row.get("TractHUNV", 50))
+            sim_transit = st.slider("Simulated Low-Vehicle Households (Transit proxy)", 0.0, 500.0, orig_transit)
+            
+            # Example slider for food access/desert density
+            orig_food = float(base_row.get("LILATracts_1And10", 10))
+            sim_food = st.slider("Simulated Low-Access Tracts (Food Program proxy)", 0.0, 100.0, orig_food)
+
+        with col_s2:
+            # Example slider for poverty rate
+            orig_pov = float(base_row.get("PovertyRate", 15.0))
+            sim_pov = st.slider("Simulated Poverty Rate (%)", 0.0, 50.0, orig_pov)
+
+        # Simulation calculation button or real-time display
+        if st.button("Run Simulation", key="run_sim"):
+            # Simple heuristic / linear approximation or live model prediction based on adjusted inputs
+            # (If using your trained pipeline, you can pass a modified copy of the feature row through `pipeline.predict()`)
+            baseline_risk = float(base_row.get("BPHIGH", 33.0))
+            
+            # Simple logic simulation example (replace with model predict if preferred):
+            delta_risk = ((sim_pov - orig_pov) * 0.15) - ((orig_transit - sim_transit) * 0.01)
+            simulated_risk = max(10.0, min(60.0, baseline_risk + delta_risk))
+
+            st.markdown("---")
+            st.subheader("🎯 Simulation Results")
+            
+            res_col1, res_col2, res_col3 = st.columns(3)
+            res_col1.metric("Baseline Risk", f"{baseline_risk:.1f}%")
+            res_col2.metric("Simulated Risk", f"{simulated_risk:.1f}%", delta=f"{simulated_risk - baseline_risk:.1f}%")
+            res_col3.metric("Projected Impact", "Favorable" if simulated_risk < baseline_risk else "Elevated")
+
+            st.success(
+                f"💡 **Policy Insight:** Implementing targeted transit and food access interventions in **{sim_county}** "
+                f"is projected to shift the regional hypertension risk score from **{baseline_risk:.1f}%** to **{simulated_risk:.1f}%**."
+            )

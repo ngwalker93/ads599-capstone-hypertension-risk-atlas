@@ -1,5 +1,4 @@
 import os
-import asyncio
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -7,7 +6,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from jinja2 import Template
-from playwright.async_api import async_playwright
 from paths import DATA_FINAL, DATA_PROCESSED, validate_and_alert
 from utils import variable_color, fig_to_base64
 import joblib
@@ -82,7 +80,7 @@ def score_row(y_true, y_pred, label):
         "MAE": mean_absolute_error(y_true, y_pred)
     }
 
-async def generate_pdf_modeling_report():
+def generate_modeling_report():
     print("Loading datasets for modeling report...")
     data_path = DATA_PROCESSED / "master_dataset_all_variables.csv"
     validate_and_alert(data_path, "Master Dataset", "Run Data Ingestion and Cleaning scripts.")
@@ -137,6 +135,7 @@ async def generate_pdf_modeling_report():
     axes[1].set(xlabel="Loading on PC1", title=f"PC1 ({pca.explained_variance_ratio_[0]:.1%} of variance)")
     
     pca_structure_uri = fig_to_base64(fig)
+    plt.close(fig)
 
     # 2. Candidate Screening
     print("Screening candidate regressors via cross-validation...")
@@ -175,6 +174,7 @@ async def generate_pdf_modeling_report():
         ax.text(value - 0.003, y_pos, f"{value:.3f}", va="center", ha="right", fontsize=9, color="white", fontweight="bold")
     
     screening_uri = fig_to_base64(fig)
+    plt.close(fig)
 
     best_name = cv_results.loc[0, "Model"]
 
@@ -231,6 +231,7 @@ async def generate_pdf_modeling_report():
     axes[2].set(xlabel="Residual (percentage points)", ylabel="Counties", title=f"Residual distribution (sd = {residuals.std():.2f})")
 
     diagnostics_uri = fig_to_base64(fig)
+    plt.close(fig)
 
     # 5. Permutation Importance
     print("Computing permutation importance...")
@@ -247,40 +248,30 @@ async def generate_pdf_modeling_report():
     ax.set_title(f"Top 20 predictors of county hypertension prevalence\n({best_name})")
     
     importance_uri = fig_to_base64(fig)
+    plt.close(fig)
 
-# 6. SHAP Analysis
+    # 6. SHAP Analysis (Safely computed on pre-PCA transformed features or raw input mapping)
     print("Generating SHAP summary chart...")
     shap_uri = None
     try:
-        # Define a background dataset for the SHAP explainer
         background_data = X_train_model.sample(n=min(100, len(X_train_model)), random_state=RANDOM_STAT)
-
-        # Initialize SHAP Explainer using the full pipeline's predict method
         explainer = shap.Explainer(best_model.predict, background_data)
-
-        # Calculate SHAP values for the test set
         shap_values = explainer(X_test_model)
 
-        # Handle SHAP values shape safely
         vals = shap_values.values if hasattr(shap_values, "values") else shap_values
         if len(vals.shape) == 3:
             vals = vals[:, :, 0]
             
-        # Extract mean absolute SHAP values manually for the top 20 features
         mean_abs_shap = np.mean(np.abs(vals), axis=0)
         
         shap_importance_df = pd.DataFrame({
-            "feature": X_test_model.columns,
+            "feature": FEATURES,
             "importance": mean_abs_shap
-        }).sort_values("importance", ascending=True) # Ascending so the largest is at the top in barh
+        }).sort_values("importance", ascending=True)
 
-        # Get the top 20 features
         top_shap = shap_importance_df.tail(20)
-
-        # Map colors to these specific features for consistency with previous plots
         shap_colors = [variable_color(feature) for feature in top_shap["feature"]]
 
-        # Plot using standard matplotlib barh (matching your permutation plot style)
         fig, ax = plt.subplots(figsize=(9, 7), layout="constrained")
         ax.barh(top_shap["feature"], top_shap["importance"], color=shap_colors, alpha=0.9)
         ax.set_xlabel("Mean absolute SHAP value")
@@ -288,7 +279,7 @@ async def generate_pdf_modeling_report():
         
         shap_uri = fig_to_base64(fig)
         plt.close(fig)
-        print("✅ SHAP chart generated successfully with consistent feature coloring!")
+        print("✅ SHAP chart generated successfully!")
     except Exception as e:
         print(f"❌ SKIPPING SHAP DUE TO ERROR: {e}")
         shap_uri = None
@@ -305,10 +296,6 @@ async def generate_pdf_modeling_report():
             h1 { color: #1a365d; border-bottom: 2px solid #3182ce; padding-bottom: 8px; }
             h2 { color: #2b6cb0; margin-top: 25px; }
             h3 { color: #2c5282; margin-top: 20px; }
-            .metrics-container { display: flex; gap: 20px; margin: 20px 0; }
-            .metric-box { background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; text-align: center; flex: 1; }
-            .metric-value { font-size: 20px; font-weight: bold; color: #2b6cb0; }
-            .metric-label { font-size: 11px; color: #4a5568; text-transform: uppercase; margin-top: 5px; }
             .chart-section { text-align: center; margin: 20px 0; page-break-inside: avoid; }
             img { max-width: 80%; height: auto; border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px; background: #fff; }
             table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
@@ -320,67 +307,25 @@ async def generate_pdf_modeling_report():
         <h1>Modeling Summary Report</h1>
         <p>Automated pipeline execution report generated successfully for target variable <b>BPHIGH</b>.</p>
 
-        <h2>Baseline Modeling Pipeline</h2>
-        <p>To establish a reproducible benchmark, we evaluated a standardized baseline pipeline architecture:</p>
-
-        <div style="background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px;">
-            def make_pipeline(regressor, alpha=0.0055, n_components=15):<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;'''Build the agreed modeling pipeline with regressor at the final step.'''<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;return Pipeline([<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("imputer", SimpleImputer(strategy="median")),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("scaler", StandardScaler()),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("feature_selection", SelectFromModel(Lasso(alpha=0.0055, max_iter=10000, random_state=42))),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("pca", PCA(n_components=15, random_state=42)),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;("regressor", regressor),<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;])
-        </div>
-
-        <h3>Pipeline Architectural Breakdown</h3>
-        <table>
-            <thead>
-                <tr><th>Step</th><th>Purpose</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>imputer</code></td><td>Fill PLACES/USDA missing values without dropping counties</td></tr>
-                <tr><td><code>scaler</code></td><td>Put all predictors on a common scale — required before Lasso and PCA</td></tr>
-                <tr><td><code>feature_selection</code></td><td>Lasso drives redundant coefficients to zero, eliminating noise columns</td></tr>
-                <tr><td><code>pca</code></td><td>Compress surviving correlated predictors into 15 orthogonal components</td></tr>
-                <tr><td><code>regressor</code></td><td>The modular estimator that varies across candidate models</td></tr>
-            </tbody>
-        </table>
-
         <h2>Dimensionality Reduction Structure</h2>
-        <p>Following Lasso feature selection, PCA compressed the remaining variables down to <b>{{ N_COMPONENTS }} components</b>.</p>
-        <div class="chart-section">
-            <img src="{{ pca_structure_uri }}" alt="PCA Scree and Loadings Plot">
-        </div>
+        <div class="chart-section"><img src="{{ pca_structure_uri }}" alt="PCA Plot"></div>
 
         <h2>Candidate Model Screening</h2>
-        <p>Evaluated across 5-fold cross validation. Best performing candidate: <b>{{ best_name }}</b>.</p>
-        <div class="chart-section">
-            <img src="{{ screening_uri }}" alt="Model Screening Comparison">
-        </div>
+        <div class="chart-section"><img src="{{ screening_uri }}" alt="Screening Plot"></div>
 
         <h2>Final Model Performance Metrics</h2>
         {{ final_scores_html | safe }}
 
         <h2>Test Set Diagnostics</h2>
-        <div class="chart-section">
-            <img src="{{ diagnostics_uri }}" alt="Test Set Diagnostics">
-        </div>
+        <div class="chart-section"><img src="{{ diagnostics_uri }}" alt="Diagnostics"></div>
 
         <h2>Feature Importance (Permutation Analysis)</h2>
-        <div class="chart-section">
-            <img src="{{ importance_uri }}" alt="Permutation Importance">
-        </div>
+        <div class="chart-section"><img src="{{ importance_uri }}" alt="Permutation"></div>
 
         {% if shap_uri %}
         <h2>SHAP Feature Importance</h2>
-        <div class="chart-section">
-            <img src="{{ shap_uri }}" alt="SHAP Summary">
-        </div>
+        <div class="chart-section"><img src="{{ shap_uri }}" alt="SHAP"></div>
         {% endif %}
-
     </body>
     </html>
     """
@@ -397,47 +342,17 @@ async def generate_pdf_modeling_report():
         shap_uri=shap_uri
     )
 
-    # Output file paths
-    output_pdf = DATA_FINAL / "modeling_summary_report.pdf"
     output_html = DATA_FINAL / "modeling_summary_report.html"
+    output_model = DATA_FINAL / "best_model_pipeline.joblib"
     os.makedirs(DATA_FINAL, exist_ok=True)
 
-    print(f"👉 EXACT PDF PATH: {output_pdf.resolve()}")
-
-    print("Launching Playwright to render PDF report...")
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu"
-            ]
-        )
-        page = await browser.new_page()
-        await page.set_content(rendered_html, wait_until="networkidle")
-        print("Rendering PDF page...")
-        await page.pdf(path=str(output_pdf), format="Letter", print_background=True)
-        await browser.close()
+    print(f"Saving best model pipeline to {output_model.resolve()}...")
+    joblib.dump(best_model, output_model)
 
     with open(output_html, "w", encoding="utf-8") as f:
         f.write(rendered_html)
 
-    print("✅ PDF and HTML generation complete!")
+    print(f"✅ HTML report generated successfully at: {output_html.resolve()}")
 
 if __name__ == "__main__":
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    try:
-        asyncio.run(generate_pdf_modeling_report())
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            future = asyncio.ensure_future(generate_pdf_modeling_report())
-            loop.run_until_complete(future)
-        else:
-            asyncio.run(generate_pdf_modeling_report())
+    generate_modeling_report()
