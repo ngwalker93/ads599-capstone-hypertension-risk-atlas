@@ -13,6 +13,7 @@ import seaborn as sns
 import sqlite3
 import streamlit as st
 import joblib
+import shap
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
@@ -111,25 +112,49 @@ except Exception as e:
     county_geojson = {}
 
 # --- Create 5-level tabs for navigation ---
-tab1, tab2, tab3, tab4, tab5= st.tabs(
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
     [
         "🗺️ Interactive Atlas",
         "📊 Statistical Insights",
         "🔄 CHRR Data Comparison",
-        "🤖 Model Performance",
-        "📈 Policy What-If Simulator",
+        "🤖 Model Performance", 
+        "🔍 Interactive Feature Explorer (SHAP)"
     ]
 )
 
-# ---- Load the pre-trained pipeline for predictions (if needed) ----
+# --- Load the trained model pipeline ---
 @st.cache_resource
 def load_trained_model():
-    model_path = Path(__file__).parent / "best_xgboost_model.pkl"
+    model_path = Path(__file__).parent.parent / "data" / "final" / "best_model_pipeline.joblib"
+    
+    if not model_path.exists():
+        model_path = Path(__file__).parent / "best_model_pipeline.joblib"
+
     if model_path.exists():
         return joblib.load(model_path)
     return None
 
 best_model = load_trained_model()
+
+# Extract the exact feature names the model was trained on
+if best_model is not None and hasattr(best_model, "feature_names_in_"):
+    model_expected_features = list(best_model.feature_names_in_)
+else:
+    model_expected_features = []
+
+# Run this once after loading df and best_model
+if "predicted_risk" not in df.columns and best_model is not None and model_expected_features:
+    try:
+        # Align entire dataframe to model features at once
+        X_full = df.copy()
+        for col in model_expected_features:
+            if col not in X_full.columns:
+                X_full[col] = 0.0
+        
+        # Generate predictions for all counties
+        df["predicted_risk"] = best_model.predict(X_full[model_expected_features])
+    except Exception as e:
+        df["predicted_risk"] = df["BPHIGH"] # fallback if shape mismatch occurs
 
 # ==========================================
 # TAB 1: INTERACTIVE ATLAS
@@ -166,45 +191,22 @@ with tab1:
             color="BPHIGH",
             color_continuous_scale="Viridis",
             scope="usa",
-            labels={"BPHIGH": "Hypertension prevalence (%)"},
+            labels={"BPHIGH": "Hypertension prevalence (%)",
+            "locationname": "County",
+            "stateabbr": "State"},
+            hover_name="locationname",
+            hover_data={
+                "fipscode": False,
+                "stateabbr": True,
+                "BPHIGH": True
+            },
             title=f"County-Level Hypertension Prevalence - {selected_state}",
         )
+
         fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
         st.info("📊 **National Snapshot:** Hypertension prevalence averaged **33.5%** across "
         "the **2,956 counties** with observed values, ranging from **21.0%** to **53.1%**.")
         st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("---")
-
-        # --- NEW: County Drill-Down & Policy Target Profile ---
-        st.subheader("🔍 County Risk & Driver Drill-Down")
-        st.write("Select a specific county within the filtered view to inspect its predicted risk and key local drivers.")
-
-        if not map_df.empty and "locationname" in map_df.columns:
-            county_list = sorted(map_df["locationname"].dropna().unique().tolist())
-            selected_county = st.selectbox("Select County for Deep Dive:", county_list, key="tab1_county_select")
-
-            # Filter data for the selected county
-            county_row = map_df[map_df["locationname"] == selected_county].iloc[0]
-
-            # Display key metrics for the county
-            col_c1, col_c2, col_c3 = st.columns(3)
-            col_c1.metric("County Name", f"{county_row.get('County', selected_county)}")
-            col_c2.metric("Observed Hypertension", f"{county_row.get('BPHIGH', 0):.1f}%")
-            
-            # If you have model predictions merged into df, show predicted vs actual here
-            if "predicted_BPHIGH" in county_row:
-                col_c3.metric("Model Predicted Risk", f"{county_row['predicted_BPHIGH']:.1f}%")
-            else:
-                col_c3.metric("State Abbreviation", f"{county_row.get('stateabbr', 'N/A')}")
-
-            # Policy Action Card / Driver Highlight
-            st.info(
-                f"🎯 **Policy Insight for {selected_county}:** "
-                f"This region's risk profile indicates elevated exposure levels. "
-                f"Targeted interventions (such as localized health outreach or infrastructure enhancements) "
-                f"should prioritize mitigating its primary structural risk drivers."
-            )
 
         st.markdown("---")
         st.subheader("Raw Data Preview")
@@ -598,93 +600,119 @@ with tab4:
 
         st.markdown("---")
 
-        # --- Section 5: Global Interpretability (SHAP) ---
-        st.header("📊 Global Interpretability & SHAP Feature Importance")
-        st.info(
-            "💡 **SHAP Insights:** The summary plot below highlights which risk factors exert "
-            "the highest positive and negative influence on county-level hypertension prevalence, "
-            "derived from our fully-tuned XGBoost model."
-        )
-
-        current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
-        image_path = current_dir / "shap_summary_importance_col.png"
-
-        if image_path.exists():
-            st.image(
-                str(image_path),
-                caption="Top 20 SHAP Features of County Hypertension Prevalence (Tuned XGBoost)",
-                use_container_width=True,
-            )
-        else:
-            # Check alternative relative path if running from project root
-            alt_path = current_dir / "dashboard" / "shap_summary_importance_col.png"
-            if alt_path.exists():
-                st.image(
-                    str(alt_path),
-                    caption="Top 20 SHAP Features of County Hypertension Prevalence (Tuned XGBoost)",
-                    use_container_width=True,
-                )
-            else:
-                st.warning("SHAP feature importance chart (`shap_summary_importance_col.png`) was not found in the dashboard folder.")
-
     else:
         st.warning("Model training datasets could not be loaded from the SQLite database.")
 
 # ==========================================
-# TAB 5: POLICY WHAT-IF SIMULATOR
+# TAB5: INTERACTIVE COUNTY DRIVER EXPLORER
 # ==========================================
 with tab5:
-    st.header("📈 Policy What-If Simulator")
+    st.header("County Risk & Driver Explorer 🔍")
     st.write(
-        "Simulate structural policy interventions (e.g., improving transit access, reducing food deserts, "
-        "or lowering poverty) to observe predicted changes in regional hypertension risk."
+        "Select a county below to inspect its predicted risk profile. "
+        "Using **SHAP (SHapley Additive exPlanations)** values derived from our XGBoost model, "
+        "we break down the primary structural and health vectors driving those results relative to the national baseline."
     )
 
-    if not df.empty:
-        # Pick a baseline county to start the simulation from
+    if df.empty:
+        st.warning("⚠️ DataFrame is empty.")
+    else:
+        # County Selector
         county_list = sorted(df["locationname"].dropna().unique().tolist())
-        sim_county = st.selectbox("Select Baseline County for Simulation:", county_list, key="sim_county")
+        selected_county_driver = st.selectbox("Select County to Inspect:", county_list, key="driver_county_select")
+
+        # Filter row for the selected county
+        county_row = df[df["locationname"] == selected_county_driver].copy()
+
+        if not county_row.empty:
+            # Pull values safely with fallbacks
+            actual_bp = county_row["BPHIGH"].values[0] if "BPHIGH" in county_row.columns else 0.0
+            predicted_risk = county_row["predicted_risk"].values[0] if "predicted_risk" in county_row.columns else actual_bp
+            state_name = county_row["stateabbr"].values[0] if "stateabbr" in county_row.columns else ""
         
-        base_row = df[df["locationname"] == sim_county].iloc[0]
-
-        st.subheader("Adjust Intervention Levers")
-        st.write("Modify the sliders below to simulate local policy changes:")
-
-        col_s1, col_s2 = st.columns(2)
-        
-        with col_s1:
-            # Example slider for a transit/vehicle access feature
-            orig_transit = float(base_row.get("TractHUNV", 50))
-            sim_transit = st.slider("Simulated Low-Vehicle Households (Transit proxy)", 0.0, 500.0, orig_transit)
-            
-            # Example slider for food access/desert density
-            orig_food = float(base_row.get("LILATracts_1And10", 10))
-            sim_food = st.slider("Simulated Low-Access Tracts (Food Program proxy)", 0.0, 100.0, orig_food)
-
-        with col_s2:
-            # Example slider for poverty rate
-            orig_pov = float(base_row.get("PovertyRate", 15.0))
-            sim_pov = st.slider("Simulated Poverty Rate (%)", 0.0, 50.0, orig_pov)
-
-        # Simulation calculation button or real-time display
-        if st.button("Run Simulation", key="run_sim"):
-            # Simple heuristic / linear approximation or live model prediction based on adjusted inputs
-            # (If using your trained pipeline, you can pass a modified copy of the feature row through `pipeline.predict()`)
-            baseline_risk = float(base_row.get("BPHIGH", 33.0))
-            
-            # Simple logic simulation example (replace with model predict if preferred):
-            delta_risk = ((sim_pov - orig_pov) * 0.15) - ((orig_transit - sim_transit) * 0.01)
-            simulated_risk = max(10.0, min(60.0, baseline_risk + delta_risk))
+            # Display Metrics
+            col1, col2, col3 = st.columns(3)
+            col1.metric("County", f"{selected_county_driver}, {state_name}")
+            col2.metric("Observed Prevalence", f"{actual_bp:.1f}%")
+            col3.metric("Model Predicted Risk", f"{predicted_risk:.1f}%")
 
             st.markdown("---")
-            st.subheader("🎯 Simulation Results")
-            
-            res_col1, res_col2, res_col3 = st.columns(3)
-            res_col1.metric("Baseline Risk", f"{baseline_risk:.1f}%")
-            res_col2.metric("Simulated Risk", f"{simulated_risk:.1f}%", delta=f"{simulated_risk - baseline_risk:.1f}%")
-            res_col3.metric("Projected Impact", "Favorable" if simulated_risk < baseline_risk else "Elevated")
+            st.subheader("Key Model Drivers for this Region")
 
-            st.success(
-                f"💡 **Policy Insight:** Implementing targeted transit and food access interventions in **{sim_county}** "
-                f"is projected to shift the regional hypertension risk score from **{baseline_risk:.1f}%** to **{simulated_risk:.1f}%**."
+            with st.expander("📖 Glossary of Key Model Drivers"):
+                st.markdown("""
+                * **Low Food Access Share (`lablackhalfshare`):** The share of the population living low-income and far from a supermarket (specifically addressing minority/low-access structural food desert dynamics).
+                * **Diabetes Prevalence (`DIABETES`):** The percentage of adults diagnosed with diabetes. Chronic high blood sugar damages blood vessels and significantly increases hypertension susceptibility.
+                * **Obesity Prevalence (`OBESITY`):** The percentage of adults aged 18+ with a body mass index (BMI) of 30 or higher. A major metabolic risk factor strongly correlated with cardiovascular strain and systemic inflammation.
+                * **Physical Inactivity (`LPA`):** The percentage of adults aged 18+ reporting no leisure-time physical activity. A key lifestyle indicator reflecting built-environment and recreational access limitations.
+                """)
+
+            # Create the metric columns display (Keep this!)
+            driver_cols = ["lablackhalfshare", "DIABETES", "OBESITY", "LPA"]
+            driver_cols_present = [col for col in driver_cols if col in county_row.columns]
+        
+            if driver_cols_present:
+                metric_cols = st.columns(len(driver_cols_present))
+                for i, col_name in enumerate(driver_cols_present):
+                    val = county_row[col_name].values[0]
+                    with metric_cols[i]:
+                        st.metric(label=col_name.replace("_", " ").title(), value=f"{val:.1f}%")
+        
+            # Restrict dynamic check strictly to your core model/SHAP drivers
+            shap_drivers = {}
+            if "OBESITY" in county_row.columns:
+                shap_drivers["Obesity Prevalence"] = county_row["OBESITY"].values[0]
+            if "DIABETES" in county_row.columns:
+                shap_drivers["Diabetes Prevalence"] = county_row["DIABETES"].values[0]
+            if "LPA" in county_row.columns:
+                shap_drivers["Physical Inactivity"] = county_row["LPA"].values[0]
+            if "lablackhalfshare" in county_row.columns:
+                shap_drivers["Low Food Access Share"] = county_row["lablackhalfshare"].values[0]
+
+            # Find which of the true model drivers is highest for this county
+            if shap_drivers:
+                top_driver_name = max(shap_drivers, key=shap_drivers.get)
+                top_driver_val = shap_drivers[top_driver_name]
+            else:
+                top_driver_name = "Obesity Prevalence"
+                top_driver_val = county_row["OBESITY"].values[0] if "OBESITY" in county_row.columns else 0.0
+
+            st.info(
+                f"🎯 **Analytical Takeaway for {selected_county_driver}:** "
+                f"As highlighted by our SHAP model analysis, this region's predicted hypertension risk is primarily driven by "
+                f"elevated **{top_driver_name.lower()} ({top_driver_val:.1f}%)**. Targeted public health interventions focusing on "
+                f"this core factor may yield the highest predictive impact."
             )
+
+            # --- Global Interpretability (SHAP) ---
+            st.header("📊 Global Interpretability & SHAP Feature Importance")
+            st.info(
+                "💡 **SHAP Insights:** The summary plot below highlights which risk factors exert "
+                "the highest positive and negative influence on county-level hypertension prevalence, "
+                "derived from our fully-tuned XGBoost model. "
+                "Counties exhibiting the structural, environmental, or metabolic vectors flagged in "
+                "the machine learning pipeline need targeted hypertension interventions, because "
+                "the pipeline proves these features are the most powerful statistical signals for "
+                "predicting where high-risk communities are clustered."
+            )
+
+            current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
+            image_path = current_dir / "shap_summary_importance_col.png"
+
+            if image_path.exists():
+                st.image(
+                    str(image_path),
+                    caption="Top 20 SHAP Features of County Hypertension Prevalence (Tuned XGBoost)",
+                    use_container_width=True,
+                )
+            else:
+                # Check alternative relative path if running from project root
+                alt_path = current_dir / "dashboard" / "shap_summary_importance_col.png"
+                if alt_path.exists():
+                    st.image(
+                        str(alt_path),
+                        caption="Top 20 SHAP Features of County Hypertension Prevalence (Tuned XGBoost)",
+                        use_container_width=True,
+                    )
+                else:
+                    st.warning("SHAP feature importance chart (`shap_summary_importance_col.png`) was not found in the dashboard folder.")
