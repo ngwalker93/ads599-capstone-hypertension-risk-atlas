@@ -7,7 +7,6 @@ data/processed/
 data/final/
 data/validation/
 models/
-hypertension_atlas.db
 
 # Allow raw data to be tracked by Git LFS
 !data/raw/
