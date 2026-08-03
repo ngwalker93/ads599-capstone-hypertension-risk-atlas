@@ -1,5 +1,4 @@
 import os
-import asyncio
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -7,12 +6,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from jinja2 import Template
-import asyncio
-from playwright.async_api import async_playwright
 from paths import DATA_FINAL, DATA_PROCESSED, validate_and_alert
 from utils import variable_color, fig_to_base64
 
-async def generate_pdf_report():
+def generate_eda_report():
     # Load data
     data_path = DATA_PROCESSED / "master_dataset_all_variables.csv"
     validate_and_alert(data_path, "Master Dataset", "Run Data Ingestion and Cleaning scripts.")
@@ -83,6 +80,7 @@ async def generate_pdf_report():
     ax1.set_title("Distribution of County-Level Hypertension Prevalence")
     plt.tight_layout()
     plot1_uri = fig_to_base64(fig1)
+    plt.close(fig1)
 
     # Generate Figure 2: Key Predictor Distributions (2x2 Grid)
     vehicle_access_rate = df["TractHUNV"] / df["OHU2010"]
@@ -112,6 +110,7 @@ async def generate_pdf_report():
 
     plt.tight_layout()
     plot_grid_uri = fig_to_base64(fig_grid)
+    plt.close(fig_grid)
 
     # Generate Figure 3: Top 20 Correlations Bar Chart
     corr = df.select_dtypes("number").corrwith(df[TARGET_COL]).drop(TARGET_COL).dropna()
@@ -127,6 +126,7 @@ async def generate_pdf_report():
     plt.tight_layout()
     
     plot2_uri = fig_to_base64(fig2)
+    plt.close(fig2)
 
     # Check for potential data leakage
     leaks = top_20[top_20.abs() > 0.95]
@@ -146,6 +146,7 @@ async def generate_pdf_report():
     ax3.set_title("Feature Correlation Heatmap Matrix")
     plt.tight_layout()
     plot3_uri = fig_to_base64(fig3)
+    plt.close(fig3)
 
     # HTML Template Structure
     html_template = """
@@ -161,18 +162,15 @@ async def generate_pdf_report():
             .metric-box { background: #f7fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; text-align: center; flex: 1; }
             .metric-value { font-size: 22px; font-weight: bold; color: #2b6cb0; }
             .metric-label { font-size: 12px; color: #4a5568; text-transform: uppercase; margin-top: 5px; }
-            .chart-section { text-align: center; margin: 20px 0; page-break-inside: avoid; }
+            .chart-section { text-align: center; margin: 20px 0; }
             img { max-width: 75%; height: auto; border: 1px solid #cbd5e0; border-radius: 4px; padding: 5px; background: #fff; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { border: 1px solid #cbd5e0; padding: 8px 12px; text-align: center; }
-            th { background-color: #f7fafc; color: #2b6cb0; }
+            ul { line-height: 1.6; }
         </style>
     </head>
     <body>
         <h1>Master Dataset: EDA Summary Report</h1>
         <p>Automated pipeline execution report generated successfully.</p>
         
-        <!-- Detailed Breakdown Section -->
         <h2>Dataset Structure & Quality</h2>
         <div class="metrics-container">
             <div class="metric-box">
@@ -222,24 +220,16 @@ async def generate_pdf_report():
         </ul>
 
         <h2>Target Variable Distribution</h2>
-        <div class="chart-section">
-            <img src="{{ plot1_uri }}" alt="Target Distribution">
-        </div>
+        <div class="chart-section"><img src="{{ plot1_uri }}" alt="Target Distribution"></div>
 
         <h2>Key Predictor Distributions</h2>
-        <div class="chart-section">
-            <img src="{{ plot_grid_uri }}" alt="Key Predictor Distributions">
-        </div>
+        <div class="chart-section"><img src="{{ plot_grid_uri }}" alt="Key Predictor Distributions"></div>
 
         <h2>Top 20 Correlated Predictors</h2>
-        <div class="chart-section">
-            <img src="{{ plot2_uri }}" alt="Top 20 Correlations">
-        </div>
+        <div class="chart-section"><img src="{{ plot2_uri }}" alt="Top 20 Correlations"></div>
 
         <h2>Feature Correlation Heatmap</h2>
-        <div class="chart-section">
-            <img src="{{ plot3_uri }}" alt="Correlation Heatmap">
-        </div>
+        <div class="chart-section"><img src="{{ plot3_uri }}" alt="Correlation Heatmap"></div>
     </body>
     </html>
     """
@@ -261,55 +251,15 @@ async def generate_pdf_report():
         plot3_uri=plot3_uri
     )
 
-    print("Rendering HTML and generating PDF report...")
-    
-    # Compile directly to PDF via Headless Chromium & Save Files
-    output_pdf = DATA_FINAL / "eda_summary_report.pdf"
+    print("Writing HTML report...")
     output_html = DATA_FINAL / "eda_summary_report.html"
     os.makedirs(DATA_FINAL, exist_ok=True)
     
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu"
-            ]
-        )
-        page = await browser.new_page()
-        await page.set_content(rendered_html)
-        await page.pdf(path=str(output_pdf), format="Letter", print_background=True)
-        await browser.close()
-
-    # Save HTML copy for GitHub viewing
-    print("Writing HTML copy")
     with open(output_html, "w", encoding="utf-8") as f:
         f.write(rendered_html)
 
-    # Generate clickable terminal links
-    pdf_uri = f"file://{os.path.abspath(output_pdf)}"
     html_uri = f"file://{os.path.abspath(output_html)}"
-
-    print(f"\n📄 PDF Report: {pdf_uri}")
     print(f"🌐 HTML Report: {html_uri}")
 
 if __name__ == "__main__":
-    import nest_asyncio
-    nest_asyncio.apply()
-    
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    try:
-        asyncio.run(generate_pdf_report())
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            future = asyncio.ensure_future(generate_pdf_report())
-            loop.run_until_complete(future)
-        else:
-            asyncio.run(generate_pdf_report())
+    generate_eda_report()

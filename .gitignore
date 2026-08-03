@@ -14,6 +14,9 @@ hypertension_atlas.db
 !data/raw/**/*.xlsx
 !data/raw/**/*.xls
 
+# Allow the best model pipeline joblib file to be tracked
+!data/final/best_model_pipeline.joblib
+
 # 2. R Environment and Temporary History
 # Excludes local workspace files and command history logs
 .Rhistory
