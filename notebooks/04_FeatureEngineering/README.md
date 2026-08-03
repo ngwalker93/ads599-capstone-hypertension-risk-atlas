@@ -15,12 +15,12 @@ This folder contains the transformations used to create the modeling dataset. Th
     Train/Test Split: Implemented stratified sampling based on the target variable to ensure balanced representation in both sets, executed prior to the PCA transformation to prevent data leakage.
 
 2. `02_feature_selection.ipynb`:
-    Feature Selection: Implemented LASSO ($L1$) regularization to prune non-contributory variables and mitigate multicollinearity. The optimal regularization strength ($\alpha=0.0055$) was determined via cross-validation.
+    Feature Selection: Implemented LASSO ($L1$) regularization to prune non-contributory variables and mitigate multicollinearity. The optimal regularization strength ($\alpha=0.0059$) was determined via cross-validation.
     
     Methodological Rigor: To ensure the integrity of the held-out test set and prevent data leakage, all formal model evaluation is deferred to the final integrated pipeline. All feature selection processes were restricted to the training split to maintain experimental validity.
 
 3. `03_dimensionality_reduction.ipynb`:
-        Dimensionality Reduction: Evaluated Principal Component Analysis (PCA) within a cross-validated pipeline to identify an optimal latent feature space. Sensitivity analysis established that 15 components provide the best balance of predictive accuracy ($R^2 \approx 0.87$) and model parsimony.
+        Dimensionality Reduction: Evaluated Principal Component Analysis (PCA) within a cross-validated pipeline to identify an optimal latent feature space. Sensitivity analysis established that 15 components provide the best balance of predictive accuracy ($R^2 \approx 0.8637$) and model parsimony.
 
 4. `04_baseline_modeling.ipynb`:
     perform linear regression modeling using the refined feature set. The notebook includes model training, evaluation, and interpretation of results.
