@@ -12,7 +12,6 @@ def get_project_root():
 BASE_PATH = get_project_root()
 DATA_RAW = BASE_PATH / "data" / "raw"
 DATA_PROCESSED = BASE_PATH / "data" / "processed"
-FIGURES_DIR = BASE_PATH / "data" / "figures"
 VALIDATION_DIR = BASE_PATH / "data" / "validation"
 DATA_FINAL = BASE_PATH / "data" / "final"
 
