@@ -5,12 +5,7 @@ and generates visualizations for key health indicators. The cleaned data is then
 """
 
 import pandas as pd
-import seaborn as sns
-import matplotlib
-matplotlib.use('Agg')  # Prevents the "intrinsic size" warning
-import matplotlib.pyplot as plt
-import numpy as np
-from paths import DATA_RAW, DATA_PROCESSED, FIGURES_DIR, validate_and_alert
+from paths import DATA_RAW, DATA_PROCESSED, validate_and_alert
 from utils import get_file_hash
 
 # Define instructions for the CDC dataset
@@ -28,7 +23,6 @@ def clean_cdc():
     
     # Ensure directories exist
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     
     # Print file fingerprint for integrity auditing
     print(f"🚀 Processing {raw_path}...")
@@ -71,30 +65,12 @@ def clean_cdc():
         if col in df.columns:
             df[col] = df[col].astype(float)
 
-    # Visualization: Distribution of BPHIGH
-    plt.figure(figsize=(10, 6))
-    sns.histplot(df['BPHIGH'], kde=True, color='red')
-    plt.title('Distribution of BPHIGH across U.S. Counties')
-    plt.savefig(FIGURES_DIR / "bphigh_distribution.png")
-    plt.close() # Close plot to free memory
-
-    # Visualization: Correlation Heatmap
-    corr = df[selected_measures].corr(numeric_only=True)
-    mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
-    
-    plt.figure(figsize=(16, 12))
-    sns.heatmap(corr, mask=mask, annot=True, fmt=".2f", cmap='coolwarm', vmin=-1, vmax=1, square=True)
-    plt.title('Feature Correlation Heatmap: Health & SDoH Indicators')
-    plt.tight_layout()
-    plt.savefig(FIGURES_DIR / "feature_correlation_heatmap.png")
-    plt.close()
-
     # FIPS Cleaning Step for master Join 
     df = df.rename(columns={'locationid': 'fipscode'})
 
     # Save Processed Data
     df.to_csv(DATA_PROCESSED / "processed_cdc_data.csv", index=False)
-    print(f"✅ Cleaned data saved to {DATA_PROCESSED / 'processed_cdc_data.csv'} and figures saved to {FIGURES_DIR}")
+    print(f"✅ Cleaned data saved to {DATA_PROCESSED / 'processed_cdc_data.csv'}")
 
     print("------------------------------------------------------------------")
     print("🚀 01_process_cdc.py completed successfully. Moving to next task...")
