@@ -641,7 +641,7 @@ with tab5:
 
             with st.expander("📖 Glossary of Key Model Drivers"):
                 st.markdown("""
-                * **Low Food Access Share (`lablackhalfshare`):** The share of the population living low-income and far from a supermarket (specifically addressing minority/low-access structural food desert dynamics).
+                * **Low Food Access Share (`lablackhalfshare`):** The share Black population living more than half a mile from a supermarket.
                 * **Diabetes Prevalence (`DIABETES`):** The percentage of adults diagnosed with diabetes. Chronic high blood sugar damages blood vessels and significantly increases hypertension susceptibility.
                 * **Obesity Prevalence (`OBESITY`):** The percentage of adults aged 18+ with a body mass index (BMI) of 30 or higher. A major metabolic risk factor strongly correlated with cardiovascular strain and systemic inflammation.
                 * **Physical Inactivity (`LPA`):** The percentage of adults aged 18+ reporting no leisure-time physical activity. A key lifestyle indicator reflecting built-environment and recreational access limitations.
