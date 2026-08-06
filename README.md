@@ -1,4 +1,4 @@
-# Hypertension Risk Atlas
+# 💓 Hypertension Risk Atlas 🗺️
 
 **ADS-599 Capstone Project — University of San Diego**
 **Project Group 2:** Nancy Walker & Michelle Wang
@@ -7,10 +7,9 @@ An interpretable machine learning project that predicts county-level hypertensio
 
 ---
 
-## Project Status
+## 🟢 Project Status
 
-**Current stage: Exploratory data analysis complete; feature engineering in progress.**
-Team formation, data sourcing, the ingestion/ETL pipeline, and the EDA of the merged three-source master table are complete. CHR&R integration is deferred pending its own feature-selection pass (see Data Sources). Feature engineering, modeling, and the interactive product follow in upcoming modules.
+**Current stage: Project Complete** 🟢 
 
 | Phase | Status |
 |-------|--------|
@@ -18,14 +17,14 @@ Team formation, data sourcing, the ingestion/ETL pipeline, and the EDA of the me
 | Data acquisition (4 public sources) | Complete |
 | ETL / merge to county-level dataset (3 sources) | Complete |
 | Exploratory data analysis (`eda_master.ipynb`) | Complete |
-| Data cleaning & feature engineering | In progress |
-| CHR&R feature selection & integration | Deferred / planned |
-| Modeling & evaluation | Planned |
-| Interactive atlas (Streamlit) | Planned |
+| Data cleaning & feature engineering | Complete |
+| CHR&R feature selection & integration | Complete |
+| Modeling & evaluation | Complete |
+| Interactive atlas (Streamlit) | Complete |
 
 ---
 
-## Problem & Goal
+## 🎯 Problem & Goal
 
 Hypertension affects nearly half of U.S. adults and is unevenly distributed across geography. Public health agencies repeatedly face the same question: where should limited prevention resources be directed to reduce hypertension burden most effectively?
 
@@ -33,7 +32,7 @@ This project reframes that question as a data science problem — predicting cou
 
 ---
 
-## Data Sources
+## 📊 Data Sources
 
 All four sources are public, free, and joined on the 5-digit county FIPS / GEOID.
 
@@ -46,11 +45,11 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 
 **Active analytic dataset (`master_dataset_all_variables.csv`):** three sources — CDC PLACES, USDA FARA, and Census ACS — standardized to county-level GEOID and merged into a single table of **3,231 rows × 120 columns**. Target variable: county-level hypertension prevalence (**BPHIGH**), observed for 2,956 counties (91.5%), which is the effective sample size for modeling.
 
-**CHR&R (not yet merged):** its 796 raw columns carry high per-column missingness (suppression flags) and substantial redundancy, so it requires a dedicated feature-selection pass before it can be folded into the master table without overwhelming the model. A specific release year is pinned for reproducibility (CHR&R funding concludes December 2026).
+**CHR&R (not yet merged):** its 796 raw columns carry high per-column missingness (suppression flags) and substantial redundancy, so it requires a dedicated feature-selection pass before it can be folded into the master table without overwhelming the model. A specific release year is pinned for reproducibility (CHR&R funding concludes December 2026). Dataset used in dashboard only as a independent holdout set. 
 
 ---
 
-## EDA Highlights (`notebooks/EDA/eda_master.ipynb`)
+## 📈 EDA Highlights (`notebooks/EDA/eda_master.ipynb`)
 
 - **Join integrity:** zero duplicate rows or FIPS keys; USDA and Census income estimates agree at r ≈ 0.91, corroborating the merge.
 - **Target (BPHIGH):** mean 33.5%, range 21%–53.1%, moderate right skew (0.83) — log-transform is a modeling candidate, not a requirement. High-prevalence outliers are genuine counties, not errors, and are retained.
@@ -62,7 +61,7 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 
 ---
 
-## Planned Methodology
+## ⚙️ Methodology
 
 1. **Data acquisition** — Programmatic ingestion from the primary sources via R scripts (`pipeline/R_src/`) that retrieve raw data through API calls and downloads, with logging of source versions and retrieval dates. CHR&R uses a pinned annual release for reproducibility.
 2. **Data preparation** — Python ETL scripts (`pipeline/DataIngestion/`) standardize each source to the 5-digit `fipscode` (GEOID, read as a zero-padded string), aggregate USDA tract-level data to counties, resolve data-grain differences, and merge into the master table; merge validation covers duplicate keys and a cross-source income consistency check (r ≈ 0.91).
@@ -75,41 +74,44 @@ All four sources are public, free, and joined on the 5-digit county FIPS / GEOID
 
 ---
 
-## Planned Repository Structure
+## 🗂️ Repository Structure
 
 ```
 Hypertension-Risk-Atlas/
+├── .devcontainer/       # devcontainer.json for VS Code Remote Containers 
+├── github/workflow/     # GitHub Actions workflows for CI/CD (e.g., run pipeline on push)
 ├── data/
-│   ├── figures/         # exploratory analysis figures (not version-controlled if large)
 │   ├── final/           # final analytic dataset (cleaned, merged, and feature-engineered)
 │   ├── processed/       # datasets created by the ETL pipeline (incl. master_dataset_all_variables.csv)
 │   ├── raw/             # source files (not version-controlled if large)
 │   └── validation/      # validation datasets (raw source datasets with validation checks)
 ├── notebooks/
-│   ├── DataIngestion/   # .qmd files that ingest data from CDC, USDA, Census, and CHR&R
-│   ├── EDA/             # .ipynb notebooks for exploratory data analysis (eda_master.ipynb active)
-│   └── validation/      # .ipynb notebooks for validation of raw source datasets
+│   ├── 01_DataIngestion/   # .qmd files that ingest data from CDC, USDA, Census, and CHR&R
+│   ├── 02_validation/      # .ipynb notebooks for validation of raw source datasets
+│   ├── 03_EDA/             # .ipynb notebooks for exploratory data analysis (eda_master.ipynb active)
+│   ├── 04_FeatureEngineering/  # .ipynb notebooks for feature engineering and dimensionality reduction 
+│   └── 05_Modeling/         # .ipynb notebooks for model training, evaluation, and interpretation
 ├── pipeline/
-│   ├── DataIngestion/   # Python cleaning & merge scripts (01_process_cdc.py, 02_process_usda.py, 03_process_census.py, 07_run_ingestion.py)
-│   ├── R_src/           # R scripts to retrieve raw data via API calls and downloads
-│   └── modeling/        # model training & evaluation
-├── .gitignore
-├── ADS599_Project.Rproj  # RStudio project file
-├── audit_data            # checks for data integrity and completeness
+│   ├── 01_R_src/           # R scripts to retrieve raw data via API calls and downloads
+│   ├── 02_DataIngestion/  # Python cleaning & merge scripts (01_process_cdc.py, 02_process_usda.py, 03_process_census.py, 07_run_ingestion.py)
+│   ├── 03_FeatureEngineering/ # Python script for feature enginnering and dimensionality reduction
+│   ├── 04_generate_eda_report.py # Python script to generate EDA report (figures, tables, and summary statistics) in HTML format
+│   └── 05_generate_model_report.py # Python script to generate model report (figures, tables, and summary statistics) in HTML format
+├── .gitattributes        # controls how tracked files are treated by Git (e.g., line endings, diffing, etc.)
+├── .gitignore            # controls which files are ignored by Git (e.g., large raw data, virtual environment, etc.)
+├── audit_data.py         # checks for data integrity and completeness
 ├── hypertension_atlas.db # SQLite database of merged datasets
-├── LICENSE
+├── hypertension_risk_atlas.ipynb # Summary notebook presenting the project's methodology, analyses, and key findings
 ├── main.py               # main script to run the entire pipeline
 ├── paths.py              # filepaths for data ingestion and modeling
 ├── README.md
-├── references.bib        # bibliography for literature review
-├── renv.lock             # R dependencies
 ├── requirements.txt      # Python dependencies
 └── utils.py              # utility functions for data ingestion and modeling
 ```
 
 ---
 
-## Planned Deliverables (Module 7)
+## 📄 Class Deliverables (Module 7)
 
 - **Capstone Article** — full methodology and results
 - **Capstone GitHub** — documented, interview-ready repository
@@ -118,15 +120,17 @@ Hypertension-Risk-Atlas/
 
 ---
 
-## Tools & Workflow
+## 🛠️ Tools & Workflow
 
 - **Languages/Environments:** R (raw data retrieval via APIs), Python (ETL, analysis & modeling), SQLite (relational integration), Jupyter Notebook, VS Code
 - **Version control:** GitHub (with GitHub Projects Kanban board for task tracking)
 - **Collaboration:** Slack (coordination), Zoom (working sessions), shared Google Drive (documents)
 
 ---
+## 🚀 Usage Instructions
+___
 
-## Activate Virtual Environment (Python)
+### Activate Virtual Environment (Python)
 
 Use Python 3.10+ to create and activate a virtual environment for this project.
 
@@ -142,24 +146,14 @@ source .venv/bin/activate
 
 ---
 
-## Install Dependencies (Python)
+### 📦 Install Dependencies (Python)
 
 ```bash
 # Install dependencies from requirements.txt
 pip install -r requirements.txt
 ```
-
-## Install Dependencies (R)
-
-```r
-# Install renv if not already installed
-install.packages("renv")
-# Restore packages from renv.lock
-renv::restore()
-```
-
 ---
-## Run Data Pipeline
+### ⚡ Run Data Pipeline
 
 ```bash
 # Run the main.py script to execute the entire data pipeline
@@ -168,18 +162,31 @@ python main.py
 
 ---
 
-## Running the Pipeline
+### 📁 Pipeline Outputs & Artifacts
 
-```bash
-# From pipeline/DataIngestion/ — runs the full ingestion and cleaning process
-python 07_run_ingestion.py
-```
-
-Outputs include the merged master dataset (`data/processed/`), the SQLite database (`hypertension_atlas.db`), CHR&R validation/metadata files, and baseline figures (BPHIGH distribution, feature-correlation heatmap).
+| Directory / File |	Description |
+| `data/processed/`	| Contains the cleaned, merged master datasets ready for analytical modeling.|
+| `data/validation/` |	Houses CHR&R (County Health Rankings & Roadmaps) validation data and associated metadata files. |
+| `data/final/` | Stores final outputs including HTML-formatted EDA and Modeling reports, train-test split datasets, and final model selection files. |
+| `hypertension_atlas.db` | The core SQLite database housing structured project data for querying and downstream application use.|
 
 ---
 
-## Scope & Intended Use
+### 🖥️ Dashboard Usage & Application
+
+The project includes an interactive Streamlit dashboard designed to explore county-level health indicators, environmental factors, and machine learning predictions.
+
+👉 Access the Live Dashboard Here: 
+
+(or launch it locally using the instructions below)
+
+```bash
+# Run the main.py script to execute the entire data pipeline
+streamlit run dashboard/app.py
+```
+___
+
+## 🎯 Scope & Intended Use
 
 The Hypertension Risk Atlas is designed to **identify and prioritize** high-risk counties and inform the planning of targeted prevention activities. Consistent with the intended use of the underlying CDC PLACES small-area estimates, it is **not** intended to evaluate the effectiveness of specific programs or policies.
 
