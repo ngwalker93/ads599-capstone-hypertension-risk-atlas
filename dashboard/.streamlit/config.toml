@@ -2,8 +2,8 @@
 base = "light"
 
 primaryColor = "#191970"
-backgroundColor = "#f6c3bdff"
-secondaryBackgroundColor = "#f6c3bdff"
+backgroundColor = "#f0b6ddff"
+secondaryBackgroundColor = "#f0b6ddff"
 textColor = "#191970"
-linkColor = "#f6c3bdff"
-dataframeHeaderBackgroundColor = "#f6c3bdff"
+linkColor = "#f0b6ddff"
+dataframeHeaderBackgroundColor = "#f0b6ddff"

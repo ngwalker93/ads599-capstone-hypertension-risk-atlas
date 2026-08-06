@@ -230,8 +230,8 @@ with tab2:
             "(**skewness = 0.83**), with a median of **33%** and most counties concentrated between "
             "**28% and 38%**. Values extending past **45%** appear as upper-tail outliers, highlighting "
             "counties with elevated risk profiles.")
-        fig1, ax1 = plt.subplots(figsize=(8, 4),facecolor="#f6c3bdff")
-        ax1.set_facecolor("#f6c3bdff")
+        fig1, ax1 = plt.subplots(figsize=(8, 4),facecolor="#f5f5fcff")
+        ax1.set_facecolor("#f5f5fcff")
         sns.histplot(
             df["BPHIGH"].dropna(),
             bins=40,
@@ -254,11 +254,11 @@ with tab2:
         vehicle_access_rate = df["TractHUNV"] / df["OHU2010"]
         food_desert_density = df["LILATracts_1And10"] / df["Pop2010"] * 100_000
 
-        fig_grid, axes = plt.subplots(2, 2, figsize=(10, 7), facecolor="#f6c3bdff")
+        fig_grid, axes = plt.subplots(2, 2, figsize=(10, 7), facecolor="#f5f5fcff")
 
         for row in axes:
             for ax in row:
-                ax.set_facecolor("#f6c3bdff")
+                ax.set_facecolor("#f5f5fcff")
 
         sns.histplot(
             vehicle_access_rate.dropna(),
@@ -319,8 +319,8 @@ with tab2:
         )
         top_n_sorted = top_n.sort_values()
 
-        fig2, ax2 = plt.subplots(figsize=(8, max(4, n_features * 0.3)), facecolor="#f6c3bdff")
-        ax2.set_facecolor("#f6c3bdff")
+        fig2, ax2 = plt.subplots(figsize=(8, max(4, n_features * 0.3)), facecolor="#f5f5fcff")
+        ax2.set_facecolor("#f5f5fcff")
         top_n_sorted.plot.barh(ax=ax2, color="teal")
         ax2.set_xlabel("Correlation with BPHIGH")
         ax2.set_title(f"Top {n_features} Predictors Correlated with Hypertension")
@@ -340,8 +340,8 @@ with tab2:
         corr_matrix = df[top_features].corr()
         mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
 
-        fig3, ax3 = plt.subplots(figsize=(9, 7), facecolor="#f6c3bdff")
-        ax3.set_facecolor("#f6c3bdff")
+        fig3, ax3 = plt.subplots(figsize=(9, 7), facecolor="#f5f5fcff")
+        ax3.set_facecolor("#f5f5fcff")
         sns.heatmap(
             corr_matrix,
             mask=mask,
