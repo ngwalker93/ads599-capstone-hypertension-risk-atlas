@@ -176,7 +176,7 @@ python main.py
 
 The project includes an interactive Streamlit dashboard designed to explore county-level health indicators, environmental factors, and machine learning predictions.
 
-👉 Access the Live Dashboard Here: 
+👉 Access the Live Dashboard Here: <ads599capstonehypertensionriskatlas-3tepewveftselpfgfsn9nc.streamlit.app>
 
 (or launch it locally using the instructions below)
 
