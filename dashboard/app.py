@@ -687,17 +687,17 @@ with tab5:
             # --- Global Interpretability (SHAP) ---
             st.header("📊 Global Interpretability & SHAP Feature Importance")
             st.info(
-                "💡 **SHAP Insights:** The summary plot below highlights which risk factors exert "
-                "the highest positive and negative influence on county-level hypertension prevalence, "
-                "derived from our fully-tuned XGBoost model. "
-                "Counties exhibiting the structural, environmental, or metabolic vectors flagged in "
-                "the machine learning pipeline need targeted hypertension interventions, because "
-                "the pipeline proves these features are the most powerful statistical signals for "
-                "predicting where high-risk communities are clustered."
+                "💡 **Model Interpretability Insights:** The dual-method comparison below evaluates feature importance "
+                "through both **Permutation Importance** (measuring the drop in predictive accuracy) and **SHAP attribution** "
+                "(measuring directional impact from our fully-tuned XGBoost model). "
+                "The high rank correlation between both approaches confirms our findings are exceptionally robust. "
+                "Counties exhibiting the structural, environmental, or metabolic vectors flagged by these models "
+                "require targeted hypertension interventions, as these features provide the most powerful statistical signals "
+                "for predicting where high-risk communities are clustered."
             )
 
             current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
-            image_path = current_dir / "shap_summary_importance_col.png"
+            image_path = current_dir / "importance_combined_perm_shap.png"
 
             if image_path.exists():
                 st.image(
@@ -707,7 +707,7 @@ with tab5:
                 )
             else:
                 # Check alternative relative path if running from project root
-                alt_path = current_dir / "dashboard" / "shap_summary_importance_col.png"
+                alt_path = current_dir / "dashboard" / "importance_combined_perm_shap.png"
                 if alt_path.exists():
                     st.image(
                         str(alt_path),
@@ -715,4 +715,4 @@ with tab5:
                         use_container_width=True,
                     )
                 else:
-                    st.warning("SHAP feature importance chart (`shap_summary_importance_col.png`) was not found in the dashboard folder.")
+                    st.warning("SHAP feature importance chart (`importance_combined_perm_shap.png`) was not found in the dashboard folder.")
