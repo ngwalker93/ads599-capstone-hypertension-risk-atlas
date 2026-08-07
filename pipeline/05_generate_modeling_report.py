@@ -103,8 +103,6 @@ def generate_modeling_report():
     y_test = pd.read_csv(y_test_path).squeeze()
 
     ID_COLS = ["fipscode", "locationname", "stateabbr", "State", "County"]
-    train_ids = X_train[ID_COLS].copy()
-    test_ids = X_test[ID_COLS].copy()
 
     X_train_model = X_train.drop(columns=[c for c in ID_COLS if c in X_train.columns])
     X_test_model = X_test.drop(columns=[c for c in ID_COLS if c in X_test.columns])
