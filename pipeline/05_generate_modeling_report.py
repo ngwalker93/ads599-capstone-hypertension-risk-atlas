@@ -85,9 +85,6 @@ def generate_modeling_report():
     data_path = DATA_PROCESSED / "master_dataset_all_variables.csv"
     validate_and_alert(data_path, "Master Dataset", "Run Data Ingestion and Cleaning scripts.")
     
-    FIPS_COL = "fipscode"
-    TARGET_COL = "BPHIGH"
-    
     # Load train/test splits
     X_train_path = DATA_FINAL / "X_train.csv"
     X_test_path = DATA_FINAL / "X_test.csv"
