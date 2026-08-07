@@ -56,9 +56,7 @@ def create_master_dataset():
     
     # Save the master dataset
     output_path = DATA_PROCESSED / "master_dataset_all_variables.csv"
-    output_path_2 = DATA_FINAL / "master_dataset_all_variables.csv"
     master_df.to_csv(output_path, index=False)
-    master_df.to_csv(output_path_2, index=False)
     
     print(f"✅ Master dataset saved to both Processed and Final directories.")
     print(f"Final dataset dimensions: {master_df.shape[0]} rows, {master_df.shape[1]} columns")

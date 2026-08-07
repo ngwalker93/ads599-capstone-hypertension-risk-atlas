@@ -9,7 +9,7 @@ The final cleaned datasets are saved for downstream analysis.
 import pandas as pd
 import numpy as np 
 import seaborn as sns
-from paths import DATA_RAW, DATA_PROCESSED, VALIDATION_DIR, FIGURES_DIR, validate_and_alert
+from paths import DATA_RAW, VALIDATION_DIR, validate_and_alert
 from utils import get_file_hash, get_missingness_summary
 
 chrr_instructions = """

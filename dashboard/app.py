@@ -230,8 +230,8 @@ with tab2:
             "(**skewness = 0.83**), with a median of **33%** and most counties concentrated between "
             "**28% and 38%**. Values extending past **45%** appear as upper-tail outliers, highlighting "
             "counties with elevated risk profiles.")
-        fig1, ax1 = plt.subplots(figsize=(8, 4),facecolor="#f6c3bdff")
-        ax1.set_facecolor("#f6c3bdff")
+        fig1, ax1 = plt.subplots(figsize=(8, 4),facecolor="#f5f5fcff")
+        ax1.set_facecolor("#f5f5fcff")
         sns.histplot(
             df["BPHIGH"].dropna(),
             bins=40,
@@ -254,11 +254,11 @@ with tab2:
         vehicle_access_rate = df["TractHUNV"] / df["OHU2010"]
         food_desert_density = df["LILATracts_1And10"] / df["Pop2010"] * 100_000
 
-        fig_grid, axes = plt.subplots(2, 2, figsize=(10, 7), facecolor="#f6c3bdff")
+        fig_grid, axes = plt.subplots(2, 2, figsize=(10, 7), facecolor="#f5f5fcff")
 
         for row in axes:
             for ax in row:
-                ax.set_facecolor("#f6c3bdff")
+                ax.set_facecolor("#f5f5fcff")
 
         sns.histplot(
             vehicle_access_rate.dropna(),
@@ -319,8 +319,8 @@ with tab2:
         )
         top_n_sorted = top_n.sort_values()
 
-        fig2, ax2 = plt.subplots(figsize=(8, max(4, n_features * 0.3)), facecolor="#f6c3bdff")
-        ax2.set_facecolor("#f6c3bdff")
+        fig2, ax2 = plt.subplots(figsize=(8, max(4, n_features * 0.3)), facecolor="#f5f5fcff")
+        ax2.set_facecolor("#f5f5fcff")
         top_n_sorted.plot.barh(ax=ax2, color="teal")
         ax2.set_xlabel("Correlation with BPHIGH")
         ax2.set_title(f"Top {n_features} Predictors Correlated with Hypertension")
@@ -340,8 +340,8 @@ with tab2:
         corr_matrix = df[top_features].corr()
         mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
 
-        fig3, ax3 = plt.subplots(figsize=(9, 7), facecolor="#f6c3bdff")
-        ax3.set_facecolor("#f6c3bdff")
+        fig3, ax3 = plt.subplots(figsize=(9, 7), facecolor="#f5f5fcff")
+        ax3.set_facecolor("#f5f5fcff")
         sns.heatmap(
             corr_matrix,
             mask=mask,
@@ -641,7 +641,7 @@ with tab5:
 
             with st.expander("📖 Glossary of Key Model Drivers"):
                 st.markdown("""
-                * **Low Food Access Share (`lablackhalfshare`):** The share of the population living low-income and far from a supermarket (specifically addressing minority/low-access structural food desert dynamics).
+                * **Low Food Access Share (`lablackhalfshare`):** The share Black population living more than half a mile from a supermarket.
                 * **Diabetes Prevalence (`DIABETES`):** The percentage of adults diagnosed with diabetes. Chronic high blood sugar damages blood vessels and significantly increases hypertension susceptibility.
                 * **Obesity Prevalence (`OBESITY`):** The percentage of adults aged 18+ with a body mass index (BMI) of 30 or higher. A major metabolic risk factor strongly correlated with cardiovascular strain and systemic inflammation.
                 * **Physical Inactivity (`LPA`):** The percentage of adults aged 18+ reporting no leisure-time physical activity. A key lifestyle indicator reflecting built-environment and recreational access limitations.
@@ -687,17 +687,17 @@ with tab5:
             # --- Global Interpretability (SHAP) ---
             st.header("📊 Global Interpretability & SHAP Feature Importance")
             st.info(
-                "💡 **SHAP Insights:** The summary plot below highlights which risk factors exert "
-                "the highest positive and negative influence on county-level hypertension prevalence, "
-                "derived from our fully-tuned XGBoost model. "
-                "Counties exhibiting the structural, environmental, or metabolic vectors flagged in "
-                "the machine learning pipeline need targeted hypertension interventions, because "
-                "the pipeline proves these features are the most powerful statistical signals for "
-                "predicting where high-risk communities are clustered."
+                "💡 **Model Interpretability Insights:** The dual-method comparison below evaluates feature importance "
+                "through both **Permutation Importance** (measuring the drop in predictive accuracy) and **SHAP attribution** "
+                "(measuring directional impact from our fully-tuned XGBoost model). "
+                "The high rank correlation between both approaches confirms our findings are exceptionally robust. "
+                "Counties exhibiting the structural, environmental, or metabolic vectors flagged by these models "
+                "require targeted hypertension interventions, as these features provide the most powerful statistical signals "
+                "for predicting where high-risk communities are clustered."
             )
 
             current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
-            image_path = current_dir / "shap_summary_importance_col.png"
+            image_path = current_dir / "importance_combined_perm_shap.png"
 
             if image_path.exists():
                 st.image(
@@ -707,7 +707,7 @@ with tab5:
                 )
             else:
                 # Check alternative relative path if running from project root
-                alt_path = current_dir / "dashboard" / "shap_summary_importance_col.png"
+                alt_path = current_dir / "dashboard" / "importance_combined_perm_shap.png"
                 if alt_path.exists():
                     st.image(
                         str(alt_path),
@@ -715,4 +715,4 @@ with tab5:
                         use_container_width=True,
                     )
                 else:
-                    st.warning("SHAP feature importance chart (`shap_summary_importance_col.png`) was not found in the dashboard folder.")
+                    st.warning("SHAP feature importance chart (`importance_combined_perm_shap.png`) was not found in the dashboard folder.")

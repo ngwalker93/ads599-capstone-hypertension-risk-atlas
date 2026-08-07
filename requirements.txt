@@ -24,3 +24,4 @@ sqlalchemy>=2.0.0
 
 # Reporting & HTML Export
 jinja2>=3.0.0
+ipywidgets>=8.0.0

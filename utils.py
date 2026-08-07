@@ -1,4 +1,4 @@
-from paths import DATA_RAW, DATA_PROCESSED, FIGURES_DIR
+from paths import DATA_RAW, DATA_PROCESSED
 import hashlib
 import pandas as pd
 import matplotlib.pyplot as plt
